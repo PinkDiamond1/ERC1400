@@ -7,8 +7,8 @@
     "tests"
   ],
   "scripts": {
-    "build:ERC1400ERC20": "sol-merger \"./contracts/token/ERC20/ERC1400ERC20.sol\" ./artifacts",
-    "build:ERC1400TokensValidator": "sol-merger \"./contracts/mocks/ERC1400TokensValidator.sol\" ./artifacts",
+    "build:ERC1400ERC20": "sol-merger \"./contracts/ERC1400ERC20.sol\" ./artifacts",
+    "build:ERC1400TokensValidator": "sol-merger \"./contracts/tokenExtension/ERC1400TokensValidator.sol\" ./artifacts",
     "build": "yarn run clean && yarn run build:ERC1400ERC20 && yarn run build:ERC1400TokensValidator",
     "clean": "rm -rf artifacts",
     "coverage": "yarn truffle run coverage",

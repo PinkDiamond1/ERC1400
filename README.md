@@ -339,6 +339,37 @@ $ yarn truffle migrate --network ropsten
 ```
 
 
+### EXTRA STEPS FOR THIS FORK
+How to run the tests
+Run ganache (give it a high gas limit):
+```
+ganache-cli -i 15 -l 100000000
+```
+Run the unit tests with truffle (already globally downloaded)
+```
+truffle test
+```
+To mix all the necessities of the Backward compatible ERC1400ERC20 (File to create bin/abi and validate source code in etherscan
+```
+yarn build:ERC1400ERC20
+```
+```
+yarn build:ERC1400TokensValidator
+```
+
+To get a compiled bytescode and ABI, it is recommended right now to use the proven method:
+
+Copy the output of ERC1400ERC20 and/or ERC1400TokensValidator into Remix https://remix.ethereum.org
+
+Compile it with the version and mostly default settings, *plus the optimization option enabled*
+
+From here you can use the solidity compiler tab to get an abi and bytecode you can copy into another project to interact
+
+You can also test deploying the contract, or using the compiled contract to communicate to the contract using the Deploy & Run Transactions panel
+
+*Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400ERC20.
+
+
 ## APPENDIX
 
 ### How to get a MNEMONIC?
