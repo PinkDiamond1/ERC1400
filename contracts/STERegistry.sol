@@ -71,9 +71,7 @@ contract STERegistry is EternalStorage, Proxy {
     event ChangeExpiryLimit(uint256 _oldExpiry, uint256 _newExpiry);
     // Emit when ownership gets transferred
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    // Emit when ownership of the ticker gets changed
-    event ChangeTickerOwnership(string _ticker, address indexed _oldOwner, address indexed _newOwner);
-    // Emit at the time of launching a new security token of version 3.0+
+    // Emit at the time of launching a new security token 
     event NewSecurityToken(
         string _ticker,
         string _name,
@@ -84,16 +82,7 @@ contract STERegistry is EternalStorage, Proxy {
         bool _fromAdmin,
         uint256 _protocolVersion
     );
-    // Emit at the time of launching a new security token 
-    event NewSecurityToken(
-        string _ticker,
-        string _name,
-        address indexed _securityTokenAddress,
-        address indexed _owner,
-        uint256 _addedAt,
-        address _registrant,
-        bool _fromAdmin,
-    );
+
     // Emit after ticker registration
     event RegisterTicker(
         address indexed _owner,
@@ -110,16 +99,6 @@ contract STERegistry is EternalStorage, Proxy {
         uint256 indexed _registrationDate,
         uint256 indexed _expiryDate,
         bool _fromAdmin,
-    );
-    // Emit at when issuer refreshes exisiting token
-    event SecurityTokenRefreshed(
-        string _ticker,
-        string _name,
-        address indexed _securityTokenAddress,
-        address indexed _owner,
-        uint256 _addedAt,
-        address _registrant,
-        uint256 _protocolVersion
     );
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
@@ -359,22 +338,7 @@ contract STERegistry is EternalStorage, Proxy {
         return getBoolValue(Encoder.getKey("registeredTickers_status", _ticker));
     }
 
-    /**
-     * @notice Internal - Sets the ticker owner
-     * @param _owner is the address of the owner of the ticker
-     * @param _ticker is the ticker symbol
-     */
-    function _setTickerOwnership(address _owner, string memory _ticker) internal {
-        bytes32 _ownerKey = Encoder.getKey("userToTickers", _owner);
-        uint256 length = uint256(getArrayBytes32(_ownerKey).length);
-        pushArray(_ownerKey, Util.stringToBytes32(_ticker));
-        set(Encoder.getKey("tickerIndex", _ticker), length);
-        bytes32 seenKey = Encoder.getKey("seenUsers", _owner);
-        if (!getBoolValue(seenKey)) {
-            pushArray(ACTIVE_USERS, _owner);
-            set(seenKey, true);
-        }
-    }
+
 
     /**
      * @notice Internal - Stores the ticker details
@@ -398,41 +362,6 @@ contract STERegistry is EternalStorage, Proxy {
         set(key, _status);
     }
 
-    /**
-     * @notice Transfers the ownership of the ticker
-     * @param _newOwner is the address of the new owner of the ticker
-     * @param _ticker is the ticker symbol
-     */
-    function transferTickerOwnership(address _newOwner, string memory _ticker) public whenNotPausedOrOwner {
-        string memory ticker = Util.upper(_ticker);
-        require(_newOwner != address(0), "Bad address");
-        bytes32 ownerKey = Encoder.getKey("registeredTickers_owner", ticker);
-        require(getAddressValue(ownerKey) == msg.sender, "Only owner");
-        if (_tickerStatus(ticker)) require(
-            IOwnable(getAddressValue(Encoder.getKey("tickerToSecurityToken", ticker))).owner() == _newOwner,
-            "Owner mismatch"
-        );
-        _deleteTickerOwnership(msg.sender, ticker);
-        _setTickerOwnership(_newOwner, ticker);
-        set(ownerKey, _newOwner);
-        emit ChangeTickerOwnership(ticker, msg.sender, _newOwner);
-    }
-
-    /**
-     * @notice Internal - Removes the owner of a ticker
-     */
-    function _deleteTickerOwnership(address _owner, string memory _ticker) internal {
-        uint256 index = uint256(getUintValue(Encoder.getKey("tickerIndex", _ticker)));
-        bytes32 ownerKey = Encoder.getKey("userToTickers", _owner);
-        bytes32[] memory tickers = getArrayBytes32(ownerKey);
-        assert(index < tickers.length);
-        assert(_tickerOwner(_ticker) == _owner);
-        deleteArrayBytes32(ownerKey, index);
-        if (getArrayBytes32(ownerKey).length > index) {
-            bytes32 switchedTicker = getArrayBytes32(ownerKey)[index];
-            set(Encoder.getKey("tickerIndex", Util.bytes32ToString(switchedTicker)), index);
-        }
-    }
 
     /**
      * @notice Changes the expiry time for the token ticker
@@ -573,20 +502,6 @@ contract STERegistry is EternalStorage, Proxy {
         );
     }
 
-    /**
-     * @dev This function is just for backwards compatibility
-     */
-    function modifySecurityToken(
-        string calldata /* */,
-        string calldata _ticker,
-        address _owner,
-        address _securityToken,
-        uint256 _deployedAt
-    )
-        external
-    {
-        modifyExistingSecurityToken(_ticker, _owner, _securityToken, _deployedAt);
-    }
 
     /**
      * @notice Internal - Stores the security token details

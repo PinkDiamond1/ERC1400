@@ -37,14 +37,6 @@ interface ISTERegistry {
         address _registrant,
         bool _fromAdmin,
     );
-    // Emit when new ticker get registers
-    event RegisterTicker(
-        address indexed _owner,
-        string _ticker,
-        uint256 indexed _registrationDate,
-        uint256 indexed _expiryDate,
-        bool _fromAdmin
-    );
     // Emit after ticker registration
     event RegisterTicker(
         address indexed _owner,
@@ -54,16 +46,7 @@ interface ISTERegistry {
         uint256 indexed _expiryDate,
         bool _fromAdmin,
     );
-    // Emit at when issuer refreshes exisiting token
-    event SecurityTokenRefreshed(
-        string _ticker,
-        string _name,
-        address indexed _securityTokenAddress,
-        address indexed _owner,
-        uint256 _addedAt,
-        address _registrant,
-        uint256 _protocolVersion
-    );
+
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
     event ProtocolFactoryRemoved(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
@@ -91,38 +74,6 @@ interface ISTERegistry {
     )
         external;
 
-    /**
-     * @notice Deploys an instance of a new Security Token and replaces the old one in the registry
-     * This can be used to upgrade from version 2.0 of ST to 3.0 or in case something goes wrong with earlier ST
-     * @dev This function needs to be in STR 3.0. Defined public to avoid stack overflow
-     * @param _name is the name of the token
-     * @param _ticker is the ticker symbol of the security token
-     * @param _divisible is whether or not the token is divisible
-     */
-    function refreshSecurityToken(
-        string calldata _name,
-        string calldata _ticker,
-        bool _divisible,
-        address _treasuryWallet
-    )
-        external returns (address securityToken);
-
-    /**
-     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
-     * @param _name Name of the token
-     * @param _ticker Ticker of the security token
-     * @param _owner Owner of the token
-     * @param _securityToken Address of the securityToken
-     * @param _deployedAt Timestamp at which security token comes deployed on the ethereum blockchain
-     */
-    function modifySecurityToken(
-        string calldata _name,
-        string calldata _ticker,
-        address _owner,
-        address _securityToken,
-        uint256 _deployedAt
-    )
-    external;
 
     /**
      * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
@@ -139,23 +90,6 @@ interface ISTERegistry {
     )
         external;
 
-    /**
-     * @notice Modifies the ticker details
-     * @notice Only allowed to modify the tickers which are not yet deployed.
-     * @param _owner is the owner of the token
-     * @param _ticker is the token ticker
-     * @param _registrationDate is the date at which ticker is registered
-     * @param _expiryDate is the expiry date for the ticker
-     * @param _status is the token deployment status
-     */
-    function modifyExistingTicker(
-        address _owner,
-        string calldata _ticker,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status
-    )
-        external;
 
     /**
      * @notice Registers the token ticker for its particular owner
@@ -274,12 +208,6 @@ interface ISTERegistry {
      */
     function removeTicker(string calldata _ticker) external;
 
-    /**
-     * @notice Transfers the ownership of the ticker
-     * @dev _newOwner Address whom ownership to transfer
-     * @dev _ticker Ticker
-     */
-    function transferTickerOwnership(address _newOwner, string calldata _ticker) external;
 
     /**
      * @notice Changes the expiry time for the token ticker
