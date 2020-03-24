@@ -4,7 +4,6 @@ pragma solidity ^0.5.0;
  * @title Interface for security token deployment
  */
 interface ISTEFactory {
-// IN PROGRESS WILL NOT COMPILE Need to modify contract
     /**
      * @notice Deploys the token and adds token extensions and other such code
      * @param _name is the name of the Security token
