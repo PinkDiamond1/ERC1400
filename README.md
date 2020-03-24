@@ -345,6 +345,7 @@ Run ganache (give it a high gas limit):
 ```
 ganache-cli -i 15 -l 100000000
 ```
+
 Run the unit tests with truffle (already globally downloaded)
 ```
 truffle test

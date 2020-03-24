@@ -9,12 +9,13 @@ import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
 import "./libraries/VersionUtils.sol";
 import "./libraries/DecimalMath.sol";
-import "./proxy/Proxy.sol";
+import "./proxy/OwnedUpgradeabilityProxy.sol";
 
 /**
  * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400ERC20 tokens from the STEFactory
  */
-contract STERegistry is EternalStorage, Proxy {
+contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
+/*
 // IN PROGRESS WILL NOT COMPILE Need to modify contract
     /**
      * @notice state variables
@@ -635,4 +636,5 @@ contract STERegistry is EternalStorage, Proxy {
     function owner() public view returns(address) {
         return getAddressValue(OWNER);
     }
+    */
 }

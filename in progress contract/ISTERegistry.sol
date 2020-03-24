@@ -1,21 +1,28 @@
-pragma solidity 0.5.8;
+pragma solidity ^0.5.0;
 
 /**
  * @title Interface for the STE Registry
  */
 interface ISTERegistry {
 // IN PROGRESS WILL NOT COMPILE Need to modify contract
+
     // Emit when network becomes paused
     event Pause(address account);
+
     // Emit when network becomes unpaused
     event Unpause(address account);
+
     // Emit when the ticker is removed from the registry
     event TickerRemoved(string _ticker, address _removedBy);
+
     // Emit when the token ticker expiry is changed
     event ChangeExpiryLimit(uint256 _oldExpiry, uint256 _newExpiry);
+
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
     // Emit when ownership of the ticker gets changed
     event ChangeTickerOwnership(string _ticker, address indexed _oldOwner, address indexed _newOwner);
+
     // Emit at the time of launching a new security token of version 3.0+
     event NewSecurityToken(
         string _ticker,
@@ -27,16 +34,7 @@ interface ISTERegistry {
         bool _fromAdmin,
         uint256 _protocolVersion
     );
-    // Emit at the time of launching a new security token v2.0.
-    event NewSecurityToken(
-        string _ticker,
-        string _name,
-        address indexed _securityTokenAddress,
-        address indexed _owner,
-        uint256 _addedAt,
-        address _registrant,
-        bool _fromAdmin,
-    );
+
     // Emit after ticker registration
     event RegisterTicker(
         address indexed _owner,
