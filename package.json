@@ -7,6 +7,7 @@
     "tests"
   ],
   "scripts": {
+    "build:ERC1400": "sol-merger \"./contracts/ERC1400.sol\" ./artifacts",
     "build:ERC1400ERC20": "sol-merger \"./contracts/ERC1400ERC20.sol\" ./artifacts",
     "build:STEFactory": "sol-merger \"./contracts/STEFactory.sol\" ./artifacts",
     "build:ERC1400TokensValidator": "sol-merger \"./contracts/tokenExtension/ERC1400TokensValidator.sol\" ./artifacts",

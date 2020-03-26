@@ -8,6 +8,9 @@ import "./ERC1400.sol";
  */
 contract STEFactory is ISTEFactory { 
 
+    // Emit when new contract deployed
+    event NewContractDeployed(address _newContract);
+
     /**
      * @notice deploys the ERC1400 token
      */
@@ -33,7 +36,7 @@ contract STEFactory is ISTEFactory {
             _certificateActivated,
             _defaultPartitions
         );
-        
+
         // Set the owner of the ERC1400 contract
         ERC1400(securityToken).transferOwnership(_owner);
         
@@ -60,6 +63,8 @@ contract STEFactory is ISTEFactory {
             _certificateActivated,
             _defaultPartitions
         );
+
+        emit NewContractDeployed(address(contractDeployment));
 
         return address(contractDeployment);
     }
