@@ -3,7 +3,8 @@ pragma solidity ^0.5.0;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ISTEFactory.sol";
-import ".ERC1400ERC20.sol";
+import "./ISTERegistry.sol";
+import "./IERC1400.sol";
 import "./storage/EternalStorage.sol";
 import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
@@ -12,15 +13,13 @@ import "./libraries/DecimalMath.sol";
 import "./proxy/OwnedUpgradeabilityProxy.sol";
 
 /**
- * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400ERC20 tokens from the STEFactory
+ * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400 tokens from the STEFactory
  */
 contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
-/*
 // IN PROGRESS WILL NOT COMPILE Need to modify contract
     /**
      * @notice state variables
 
-       uint256 public expiryLimit;
        bool public paused;
        address public owner;
 
@@ -33,7 +32,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
        mapping(string => TickerDetails) registeredTickers;
        mapping(address => SecurityTokenData) securityTokens;
        mapping(bytes32 => address) protocolVersionST;
-       mapping(uint256 => ProtocolVersion) versionData;
+       mapping(uint256 => ProtocolVersion);
 
        struct ProtocolVersion {
            uint8 major;
@@ -44,8 +43,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
        struct TickerDetails {
            address owner;
            uint256 registrationDate;
-           uint256 expiryDate;
-           string tokenName; //Not stored since 3.0.0
+           string tokenName;
            bool status;
        }
 
@@ -61,17 +59,22 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
    
     bytes32 constant OWNER = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0; //keccak256("owner")
     bytes32 constant LATEST_VERSION = 0x4c63b69b9117452b9f11af62077d0cda875fb4e2dbe07ad6f31f728de6926230; //keccak256("latestVersion")
+    bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")    
+    bytes32 constant PAUSED = 0xee35723ac350a69d2a92d3703f17439cbaadf2f093a21ba5bf5f1a53eb2a14d9; //keccak256("paused")
+
 
     // Emit when network becomes paused
     event Pause(address account);
+
     // Emit when network becomes unpaused
     event Unpause(address account);
+
     // Emit when the ticker is removed from the registry
     event TickerRemoved(string _ticker, address _removedBy);
-    // Emit when the token ticker expiry is changed
-    event ChangeExpiryLimit(uint256 _oldExpiry, uint256 _newExpiry);
+
     // Emit when ownership gets transferred
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
     // Emit at the time of launching a new security token 
     event NewSecurityToken(
         string _ticker,
@@ -84,26 +87,19 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 _protocolVersion
     );
 
-    // Emit after ticker registration
-    event RegisterTicker(
-        address indexed _owner,
-        string _ticker,
-        uint256 indexed _registrationDate,
-        uint256 indexed _expiryDate,
-        bool _fromAdmin,
-    );
-    // For backwards compatibility
+ 
+    // Emit when registering a new ticker
     event RegisterTicker(
         address indexed _owner,
         string _ticker,
         string _name,
         uint256 indexed _registrationDate,
-        uint256 indexed _expiryDate,
-        bool _fromAdmin,
+        bool _fromAdmin
     );
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
     event ProtocolFactoryRemoved(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
+
     /////////////////////////////
     // Modifiers
     /////////////////////////////
@@ -161,16 +157,16 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
 
     // Constructor
     constructor() public {
+    // Call initialize?
         set(INITIALIZE, true);
     }
 
     /**
      * @notice Initializes instance of STR
      * @param _owner is the owner of the STR,
-     * @param _getterContract Contract address of the contract which consists getter functions.
      */
     function initialize(
-        address _owner,
+        address _owner
     )
         public
     {
@@ -179,211 +175,20 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _owner != address(0),
             "Invalid address"
         );
-        set(EXPIRYLIMIT, uint256(60 * 1 days));
         set(PAUSED, false);
         set(OWNER, _owner);
         set(INITIALIZE, true);
     }
 
-
-    /**
-     * @notice Set the getter contract address
-     * @param _getterContract Address of the contract
-     */
-    function setGetterRegistry(address _getterContract) public onlyOwnerOrSelf {
-        require(_getterContract != address(0));
-        set(STRGETTER, _getterContract);
-    }
-
-    function _implementation() internal view returns(address) {
-        return getAddressValue(STRGETTER);
-    }
-
-    /////////////////////////////
-    // Token Ticker Management
-    /////////////////////////////
-
-    /**
-     * @notice Registers the token ticker to the selected owner
-     * @notice Once the token ticker is registered to its owner then no other issuer can claim
-     * @notice its ownership. If the ticker expires and its issuer hasn't used it, then someone else can take it.
-     * @param _owner is address of the owner of the token
-     * @param _ticker is unique token ticker
-     */
-    function registerNewTicker(address _owner, string memory _ticker) public whenNotPausedOrOwner {
-        require(_owner != address(0), "Bad address");
-        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
-        string memory ticker = Util.upper(_ticker);
-        require(tickerAvailable(ticker), "Ticker reserved");
-        // Check whether ticker was previously registered (and expired)
-        address previousOwner = _tickerOwner(ticker);
-        if (previousOwner != address(0)) {
-            _deleteTickerOwnership(previousOwner, ticker);
-        }
-        /*solium-disable-next-line security/no-block-members*/
-        _addTicker(_owner, ticker, now, now.add(getUintValue(EXPIRYLIMIT)), false, false);
-    }
-
-
-    /**
-     * @notice Internal - Sets the details of the ticker
-     */
-    function _addTicker(
-        address _owner,
-        string memory _ticker,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status,
-        bool _fromAdmin,
-    )
-        internal
-    {
-        _setTickerOwnership(_owner, _ticker);
-        _storeTickerDetails(_ticker, _owner, _registrationDate, _expiryDate, _status);
-        emit RegisterTicker(_owner, _ticker, _registrationDate, _expiryDate, _fromAdmin);
-    }
-
-    /**
-     * @notice Modifies the ticker details
-     * @notice Only allowed to modify the tickers which are not yet deployed.
-     * @param _owner is the owner of the token
-     * @param _ticker is the token ticker
-     * @param _registrationDate is the date at which ticker is registered
-     * @param _expiryDate is the expiry date for the ticker
-     * @param _status is the token deployment status
-     */
-    function modifyTicker(
-        address _owner,
-        string memory _ticker,
-        string memory _tokenName,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status
-    )
-        public
-        onlyOwner
-    {
-        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
-        require(_expiryDate != 0 && _registrationDate != 0, "Bad dates");
-        require(_registrationDate <= _expiryDate, "Bad dates");
-        require(_owner != address(0), "Bad address");
-        string memory ticker = Util.upper(_ticker);
-        _modifyTicker(_owner, ticker, _registrationDate, _expiryDate, _status);
-    }
-
-
-    /**
-     * @notice Internal -- Modifies the ticker details.
-     */
-    function _modifyTicker(
-        address _owner,
-        string memory _ticker,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status
-    )
-        internal
-    {
-        address currentOwner = _tickerOwner(_ticker);
-        if (currentOwner != address(0)) {
-            _deleteTickerOwnership(currentOwner, _ticker);
-        }
-        if (_tickerStatus(_ticker) && !_status) {
-            set(Encoder.getKey("tickerToSecurityToken", _ticker), address(0));
-        }
-        // If status is true, there must be a security token linked to the ticker already
-        if (_status) {
-            require(getAddressValue(Encoder.getKey("tickerToSecurityToken", _ticker)) != address(0), "Not registered");
-        }
-        _addTicker(_owner, _ticker, _registrationDate, _expiryDate, _status, true, uint256(0), uint256(0));
-    }
-
-    function _tickerOwner(string memory _ticker) internal view returns(address) {
-        return getAddressValue(Encoder.getKey("registeredTickers_owner", _ticker));
-    }
-
-    /**
-     * @notice Removes the ticker details, associated ownership & security token mapping
-     * @param _ticker is the token ticker
-     */
-    function removeTicker(string memory _ticker) public onlyOwner {
-        string memory ticker = Util.upper(_ticker);
-        address owner = _tickerOwner(ticker);
-        require(owner != address(0), "Bad ticker");
-        _deleteTickerOwnership(owner, ticker);
-        set(Encoder.getKey("tickerToSecurityToken", ticker), address(0));
-        _storeTickerDetails(ticker, address(0), 0, 0, false);
-        /*solium-disable-next-line security/no-block-members*/
-        emit TickerRemoved(ticker, msg.sender);
-    }
-
-    /**
-     * @notice Checks if the entered ticker is registered and has not expired
-     * @param _ticker is the token ticker
-     * @return bool
-     */
-    function tickerAvailable(string memory _ticker) public view returns(bool) {
-        // Validate ticker to avoid confusions where a ticker IS available YET cannot be registered.
-        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
-        string memory ticker = Util.upper(_ticker);
-        if (_tickerOwner(ticker) != address(0)) {
-            /*solium-disable-next-line security/no-block-members*/
-            if ((now > getUintValue(Encoder.getKey("registeredTickers_expiryDate", ticker))) && !_tickerStatus(ticker)) {
-                return true;
-            } else return false;
-        }
-        return true;
-    }
-
-    function _tickerStatus(string memory _ticker) internal view returns(bool) {
-        return getBoolValue(Encoder.getKey("registeredTickers_status", _ticker));
-    }
-
-
-
-    /**
-     * @notice Internal - Stores the ticker details
-     */
-    function _storeTickerDetails(
-        string memory _ticker,
-        address _owner,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status
-    )
-        internal
-    {
-        bytes32 key = Encoder.getKey("registeredTickers_owner", _ticker);
-        set(key, _owner);
-        key = Encoder.getKey("registeredTickers_registrationDate", _ticker);
-        set(key, _registrationDate);
-        key = Encoder.getKey("registeredTickers_expiryDate", _ticker);
-        set(key, _expiryDate);
-        key = Encoder.getKey("registeredTickers_status", _ticker);
-        set(key, _status);
-    }
-
-
-    /**
-     * @notice Changes the expiry time for the token ticker
-     * @param _newExpiry is the new expiry for newly generated tickers
-     */
-    function changeExpiryLimit(uint256 _newExpiry) public onlyOwner {
-        require(_newExpiry >= 1 days, "Bad dates");
-        emit ChangeExpiryLimit(getUintValue(EXPIRYLIMIT), _newExpiry);
-        set(EXPIRYLIMIT, _newExpiry);
-    }
-
-    /////////////////////////////
-    // Security Token Management
-    /////////////////////////////
-
-    /**
+     /**
      * @notice Deploys an instance of a new Security Token and records it to the registry
      * @param _name is the name of the token
      * @param _ticker is the ticker symbol of the security token
-     * @param _divisible is whether or not the token is divisible
-     * @param _treasuryWallet Ethereum address which will holds the STs.
+     * @param _granularity is the number of granularity of the Security Token
+     * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
+     * @param _certificateSigner Valid Eth address which can sign certificates while that feature is active
+     * @param _certificateActivated Whether to activate the certificates feature
+     * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
      * @param _protocolVersion Version of securityToken contract
      * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
      * - if _protocolVersion == 0 then latest version of securityToken will be generated
@@ -391,12 +196,11 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function generateNewSecurityToken(
         string memory _name,
         string memory _ticker,
-        bool _divisible,
+        uint8 _granularity,
         address[] memory _controllers,
         address _certificateSigner,
         bool _certificateActivated,
         bytes32[] memory _defaultPartitions,
-        address _treasuryWallet,
         uint256 _protocolVersion
     )
         public
@@ -413,8 +217,6 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         set(statusKey, true);
         address issuer = msg.sender;
         require(_tickerOwner(_ticker) == issuer, "Not authorised");
-        /*solium-disable-next-line security/no-block-members*/
-        require(getUintValue(Encoder.getKey("registeredTickers_expiryDate", _ticker)) >= now, "Ticker expired");
         address newSecurityTokenAddress =
             _deployToken(_name, _ticker, issuer, _divisible, controllers, certificateSigner, certificateActivated, _defaultPartitions, _treasuryWallet, _protocolVersion);
         if (_protocolVersion == VersionUtils.pack(2, 0, 0)) {
@@ -450,7 +252,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         upperLimit[1] = 99;
         upperLimit[2] = 99;
 
-        newSecurityTokenAddress = ISTFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
+        newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
             _name,
             _ticker,
             18,
@@ -489,14 +291,12 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         string memory ticker = Util.upper(_ticker);
         require(_securityToken != address(0), "Bad address");
         uint256 registrationTime = getUintValue(Encoder.getKey("registeredTickers_registrationDate", ticker));
-        uint256 expiryTime = getUintValue(Encoder.getKey("registeredTickers_expiryDate", ticker));
         if (registrationTime == 0) {
             /*solium-disable-next-line security/no-block-members*/
             registrationTime = now;
-            expiryTime = registrationTime.add(getUintValue(EXPIRYLIMIT));
         }
         set(Encoder.getKey("tickerToSecurityToken", ticker), _securityToken);
-        _modifyTicker(_owner, ticker, registrationTime, expiryTime, true);
+        _modifyTicker(_owner, ticker, registrationTime, true);
         _storeSecurityTokenData(_securityToken, ticker, _deployedAt);
         emit NewSecurityToken(
             ticker, ISecurityToken(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0), uint256(0), 0
@@ -525,48 +325,182 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         return (keccak256(bytes(getStringValue(Encoder.getKey("securityTokens_ticker", _securityToken)))) != keccak256(""));
     }
 
-    /////////////////////////////
-    // Ownership, lifecycle & Utility
-    /////////////////////////////
 
     /**
-    * @dev Allows the current owner to transfer control of the contract to a newOwner.
-    * @param _newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address _newOwner) public onlyOwner {
-        require(_newOwner != address(0), "Bad address");
-        emit OwnershipTransferred(getAddressValue(OWNER), _newOwner);
-        set(OWNER, _newOwner);
+     * @notice Set the implementation contract address
+     * @param _getterContract Address of the contract implementation
+     */
+    function setGetterRegistry(address _getterContract) public onlyOwnerOrSelf {
+        require(_getterContract != address(0));
+        set(STRGETTER, _getterContract);
     }
 
+    function _implementation() internal view returns(address) {
+        return getAddressValue(STRGETTER);
+    }
+
+
     /**
-    * @notice Called by the owner to pause, triggers stopped state
-    */
-    function pause() external whenNotPaused onlyOwner {
-        set(PAUSED, true);
+     * @notice Registers the token ticker to the selected owner
+     * @notice Once the token ticker is registered to its owner then no other issuer can claim
+     * @notice its ownership. If the ticker expires and its issuer hasn't used it, then someone else can take it.
+     * @param _owner is address of the owner of the token
+     * @param _ticker is unique token ticker
+     * @param _tokenName is unique token name
+     */
+    function registerTicker(address _owner, string memory _ticker, string memory _tokenName) public whenNotPausedOrOwner {
+        require(_owner != address(0), "Bad address");
+        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
+        require(bytes(_tokenName).length > 0, "Bad token name");
+        string memory ticker = Util.upper(_ticker);
+        require(tickerAvailable(ticker), "Ticker reserved");
+        // Check whether ticker was previously registered (and expired) // This is not necessary
+        address previousOwner = _tickerOwner(ticker);
+        if (previousOwner != address(0)) {
+            _deleteTickerOwnership(previousOwner, ticker);
+        }
         /*solium-disable-next-line security/no-block-members*/
-        emit Pause(msg.sender);
+        _addTicker(_owner, ticker, now, false, false);
+    }
+
+
+    /**
+     * @notice Internal - Sets the details of the ticker
+     */
+    function _addTicker(
+        address _owner,
+        string memory _ticker,
+        uint256 _registrationDate,
+        bool _status,
+        bool _fromAdmin
+    )
+        internal
+    {
+        _setTickerOwnership(_owner, _ticker);
+        _storeTickerDetails(_ticker, _owner, _registrationDate, _status);
+        emit RegisterTicker(_owner, _ticker, _registrationDate, _fromAdmin);
+    }
+
+
+    function _tickerOwner(string memory _ticker) internal view returns(address) {
+        return getAddressValue(Encoder.getKey("registeredTickers_owner", _ticker));
     }
 
     /**
-    * @notice Called by the owner to unpause, returns to normal state
-    */
-    function unpause() external whenPaused onlyOwner {
-        set(PAUSED, false);
+     * @notice Removes the ticker details, associated ownership & security token mapping
+     * @param _ticker is the token ticker
+     */
+    function removeTicker(string memory _ticker) public onlyOwner {
+        string memory ticker = Util.upper(_ticker);
+        address owner = _tickerOwner(ticker);
+        require(owner != address(0), "Bad ticker");
+        _deleteTickerOwnership(owner, ticker);
+        set(Encoder.getKey("tickerToSecurityToken", ticker), address(0));
+        _storeTickerDetails(ticker, address(0), 0, 0, false);
         /*solium-disable-next-line security/no-block-members*/
-        emit Unpause(msg.sender);
+        emit TickerRemoved(ticker, msg.sender);
     }
 
 
     /**
-    * @notice Reclaims all ERC20Basic compatible tokens
-    * @param _tokenContract is the address of the token contract
+     * @notice Internal - Removes the owner of a ticker
+     */
+    function _deleteTickerOwnership(address _owner, string memory _ticker) internal {
+        uint256 index = uint256(getUintValue(Encoder.getKey("tickerIndex", _ticker)));
+        bytes32 ownerKey = Encoder.getKey("userToTickers", _owner);
+        bytes32[] memory tickers = getArrayBytes32(ownerKey);
+        assert(index < tickers.length);
+        assert(_tickerOwner(_ticker) == _owner);
+        deleteArrayBytes32(ownerKey, index);
+        if (getArrayBytes32(ownerKey).length > index) {
+            bytes32 switchedTicker = getArrayBytes32(ownerKey)[index];
+            set(Encoder.getKey("tickerIndex", Util.bytes32ToString(switchedTicker)), index);
+        }
+    }
+
+
+    /**
+     * @notice Checks if the entered ticker is registered and has not expired
+     * @param _ticker is the token ticker
+     * @return bool
+     */
+    function tickerAvailable(string memory _ticker) public view returns(bool) {
+        // Validate ticker to avoid confusions where a ticker IS available YET cannot be registered.
+        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
+        string memory ticker = Util.upper(_ticker);
+        if (_tickerOwner(ticker) != address(0)) {
+            /*solium-disable-next-line security/no-block-members*/
+            if (!_tickerStatus(ticker)) {
+                return true;
+            } else return false;
+        }
+        return true;
+    }
+
+    function _tickerStatus(string memory _ticker) internal view returns(bool) {
+        return getBoolValue(Encoder.getKey("registeredTickers_status", _ticker));
+    }
+
+
+    /**
+     * @notice Internal - Stores the ticker details
+     */
+    function _storeTickerDetails(
+        string memory _ticker,
+        address _owner,
+        uint256 _registrationDate,
+        bool _status
+    )
+        internal
+    {
+        bytes32 key = Encoder.getKey("registeredTickers_owner", _ticker);
+        set(key, _owner);
+        key = Encoder.getKey("registeredTickers_registrationDate", _ticker);
+        set(key, _registrationDate);
+        key = Encoder.getKey("registeredTickers_status", _ticker);
+        set(key, _status);
+    }
+
+
+    /**
+     * @notice Get security token address by ticker name
+     * @param _ticker Symbol of the Scurity token
+     * @return address
+     */
+    function getSecurityTokenAddress(string calldata _ticker) external view returns(address tokenAddress){
+        return address(0);
+    }
+
+    /**
+    * @notice Returns the security token data by address
+    * @param _securityToken is the address of the security token.
+    * @return string is the ticker of the security Token.
+    * @return address is the issuer of the security Token.
+    * @return string is the details of the security token.
+    * @return uint256 is the timestamp at which security Token was deployed.
     */
-    function reclaimERC20(address _tokenContract) public onlyOwner {
-        require(_tokenContract != address(0), "Bad address");
-        IERC20 token = IERC20(_tokenContract);
-        uint256 balance = token.balanceOf(address(this));
-        require(token.transfer(owner(), balance), "Transfer failed");
+    function getSecurityTokenData(address _securityToken) external view returns (
+        string memory tokenSymbol,
+        address tokenAddress,
+        uint256 tokenTime
+    ){
+        return ('null', address(0), 1);
+    }
+
+
+    /**
+     * @notice Get the current STFactory Address
+     */
+    function getSTFactoryAddress() external view returns(address stFactoryAddress){
+            return address(0);
+    }
+
+    /**
+     * @notice Get Protocol version
+     */
+    function getLatestProtocolVersion(uint256 _packedVersion) external view returns(uint8[] memory protocolVersion)
+    {
+     return versionData(getAddressValue(Encoder.getKey("protocolVersionST", _packedVersion)));
     }
 
     /**
@@ -621,6 +555,69 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         emit LatestVersionSet(_major, _minor, _patch);
     }
 
+     /**
+     * @notice Returns the list of all tokens
+     * @dev Intention is that this is called off-chain so block gas limit is not relevant
+     */
+    function getTokens() external view returns(address[] memory tokens)
+    {
+         return [];
+    }
+
+       /**
+     * @notice Gets the owner of the ticker
+     * @param _ticker Ticker whose owner need to determine
+     * @return address Address of the owner
+     */
+    function getTickerOwner(string calldata _ticker) external view returns(address owner){
+        return address(0);
+    }
+
+
+    /////////////////////////////
+    // Ownership, lifecycle & Utility
+    /////////////////////////////
+
+    /**
+    * @dev Allows the current owner to transfer control of the contract to a newOwner.
+    * @param _newOwner The address to transfer ownership to.
+    */
+    function transferOwnership(address _newOwner) public onlyOwner {
+        require(_newOwner != address(0), "Bad address");
+        emit OwnershipTransferred(getAddressValue(OWNER), _newOwner);
+        set(OWNER, _newOwner);
+    }
+
+    /**
+    * @notice Called by the owner to pause, triggers stopped state
+    */
+    function pause() external whenNotPaused onlyOwner {
+        set(PAUSED, true);
+        /*solium-disable-next-line security/no-block-members*/
+        emit Pause(msg.sender);
+    }
+
+    /**
+    * @notice Called by the owner to unpause, returns to normal state
+    */
+    function unpause() external whenPaused onlyOwner {
+        set(PAUSED, false);
+        /*solium-disable-next-line security/no-block-members*/
+        emit Unpause(msg.sender);
+    }
+
+
+    /**
+    * @notice Reclaims all ERC20Basic compatible tokens
+    * @param _tokenContract is the address of the token contract
+    */
+    function reclaimERC20(address _tokenContract) public onlyOwner {
+        require(_tokenContract != address(0), "Bad address");
+        IERC20 token = IERC20(_tokenContract);
+        uint256 balance = token.balanceOf(address(this));
+        require(token.transfer(owner(), balance), "Transfer failed");
+    }
+
     /**
      * @notice Check whether the registry is paused or not
      * @return bool
@@ -636,5 +633,4 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function owner() public view returns(address) {
         return getAddressValue(OWNER);
     }
-    */
 }

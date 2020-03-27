@@ -15,15 +15,10 @@ interface ISTERegistry {
     // Emit when the ticker is removed from the registry
     event TickerRemoved(string _ticker, address _removedBy);
 
-    // Emit when the token ticker expiry is changed
-    event ChangeExpiryLimit(uint256 _oldExpiry, uint256 _newExpiry);
-
+    // Emit if ticker ownership is transferred
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    // Emit when ownership of the ticker gets changed
-    event ChangeTickerOwnership(string _ticker, address indexed _oldOwner, address indexed _newOwner);
-
-    // Emit at the time of launching a new security token of version 3.0+
+    // Emit at the time of launching a new security token
     event NewSecurityToken(
         string _ticker,
         string _name,
@@ -41,8 +36,7 @@ interface ISTERegistry {
         string _ticker,
         string _name,
         uint256 indexed _registrationDate,
-        uint256 indexed _expiryDate,
-        bool _fromAdmin,
+        bool _fromAdmin
     );
 
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
@@ -53,8 +47,11 @@ interface ISTERegistry {
      * @notice Deploys an instance of a new Security Token and records it to the registry
      * @param _name is the name of the token
      * @param _ticker is the ticker symbol of the security token
-     * @param _divisible is whether or not the token is divisible
-     * @param _treasuryWallet Ethereum address which will holds the STs.
+     * @param _granularity is the number of granularity of the Security Token
+     * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
+     * @param _certificateSigner Valid Eth address which can sign certificates while that feature is active
+     * @param _certificateActivated Whether to activate the certificates feature
+     * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
      * @param _protocolVersion Version of securityToken contract
      * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
      * - if _protocolVersion == 0 then latest version of securityToken will be generated
@@ -62,21 +59,19 @@ interface ISTERegistry {
     function generateNewSecurityToken(
         string calldata _name,
         string calldata _ticker,
-        bool _divisible,
+        uint8 _granularity,
         address[] calldata _controllers,
         address _certificateSigner,
         bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
-        address _treasuryWallet,
         uint256 _protocolVersion
     )
         external;
 
-
     /**
-     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
+    * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
      * @param _ticker is the ticker symbol of the security token
-     * @param _owner is the owner of the token
+    * @param _owner is the owner of the token
      * @param _securityToken is the address of the securityToken
      * @param _deployedAt is the timestamp at which the security token is deployed
      */
@@ -88,6 +83,12 @@ interface ISTERegistry {
     )
         external;
 
+    /**
+    * @notice Check that Security Token is registered
+    * @param _securityToken Address of the Scurity token
+    * @return bool
+    */
+    function isSecurityToken(address _securityToken) external view returns(bool isValid);
 
     /**
      * @notice Registers the token ticker for its particular owner
@@ -99,19 +100,19 @@ interface ISTERegistry {
      */
     function registerTicker(address _owner, string calldata _ticker, string calldata _tokenName) external;
 
+    /**
+     * @notice Removes the ticker details and associated ownership & security token mapping
+     * @param _ticker Token ticker
+     */
+    function removeTicker(string calldata _ticker) external;
+
 
     /**
-    * @notice Check that Security Token is registered
-    * @param _securityToken Address of the Scurity token
-    * @return bool
-    */
-    function isSecurityToken(address _securityToken) external view returns(bool isValid);
-
-    /**
-    * @dev Allows the current owner to transfer control of the contract to a newOwner.
-    * @param _newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address _newOwner) external;
+     * @notice Checks if the entered ticker is registered and has not expired
+     * @param _ticker is the token ticker
+     * @return bool
+     */
+    function tickerAvailable(string calldata _ticker) external view returns(bool);
 
     /**
      * @notice Get security token address by ticker name
@@ -140,28 +141,9 @@ interface ISTERegistry {
     function getSTFactoryAddress() external view returns(address stFactoryAddress);
 
     /**
-     * @notice Returns the STFactory Address of a particular version
-     * @param _protocolVersion Packed protocol version
-     */
-    function getSTFactoryAddressOfVersion(uint256 _protocolVersion) external view returns(address stFactory);
-
-    /**
      * @notice Get Protocol version
      */
     function getLatestProtocolVersion() external view returns(uint8[] memory protocolVersion);
-
-    /**
-     * @notice Used to get the ticker list as per the owner
-     * @param _owner Address which owns the list of tickers
-     */
-    function getTickersByOwner(address _owner) external view returns(bytes32[] memory tickers);
-
-    /**
-     * @notice Returns the list of tokens owned by the selected address
-     * @param _owner is the address which owns the list of tickers
-     * @dev Intention is that this is called off-chain so block gas limit is not relevant
-     */
-    function getTokensByOwner(address _owner) external view returns(address[] memory tokens);
 
     /**
      * @notice Returns the list of all tokens
@@ -169,49 +151,6 @@ interface ISTERegistry {
      */
     function getTokens() external view returns(address[] memory tokens);
 
-    /**
-     * @notice Returns the owner and timestamp for a given ticker
-     * @param _ticker ticker
-     * @return address
-     * @return uint256
-     * @return uint256
-     * @return string
-     * @return bool
-     */
-    function getTickerDetails(string calldata _ticker) external view returns(address tickerOwner, uint256 tickerRegistration, uint256 tickerExpiry, string memory tokenName, bool tickerStatus);
-
-    /**
-     * @notice Modifies the ticker details
-     * to do so. Only allowed to modify the tickers which are not yet deployed
-     * @param _owner Owner of the token
-     * @param _ticker Token ticker
-     * @param _tokenName Name of the token
-     * @param _registrationDate Date on which ticker get registered
-     * @param _expiryDate Expiry date of the ticker
-     * @param _status Token deployed status
-     */
-    function modifyTicker(
-        address _owner,
-        string calldata _ticker,
-        string calldata _tokenName,
-        uint256 _registrationDate,
-        uint256 _expiryDate,
-        bool _status
-    )
-    external;
-
-    /**
-     * @notice Removes the ticker details and associated ownership & security token mapping
-     * @param _ticker Token ticker
-     */
-    function removeTicker(string calldata _ticker) external;
-
-
-    /**
-     * @notice Changes the expiry time for the token ticker
-     * @param _newExpiry New time period for token ticker expiry
-     */
-    function changeExpiryLimit(uint256 _newExpiry) external;
 
     /**
     * @notice Changes the SecurityToken contract for a particular factory version
@@ -241,31 +180,17 @@ interface ISTERegistry {
     function setLatestVersion(uint8 _major, uint8 _minor, uint8 _patch) external;
 
     /**
-     * @notice Returns the list of tokens to which the delegate has some access
-     * @param _delegate is the address for the delegate
-     * @dev Intention is that this is called off-chain so block gas limit is not relevant
-     */
-    function getTokensByDelegate(address _delegate) external view returns(address[] memory tokens);
-
-    /**
-     * @notice Gets the expiry limit
-     * @return Expiry limit
-     */
-    function getExpiryLimit() external view returns(uint256 expiry);
-
-    /**
-     * @notice Gets the status of the ticker
-     * @param _ticker Ticker whose status need to determine
-     * @return bool
-     */
-    function getTickerStatus(string calldata _ticker) external view returns(bool status);
-
-    /**
      * @notice Gets the owner of the ticker
      * @param _ticker Ticker whose owner need to determine
      * @return address Address of the owner
      */
     function getTickerOwner(string calldata _ticker) external view returns(address owner);
+
+    /**
+    * @dev Allows the current owner to transfer control of the contract to a newOwner.
+    * @param _newOwner The address to transfer ownership to.
+    */
+    function transferOwnership(address _newOwner) external;
 
     /**
      * @notice Checks whether the registry is paused or not
@@ -294,12 +219,4 @@ interface ISTERegistry {
      * @return address owner
      */
     function owner() external view returns(address ownerAddress);
-
-    /**
-     * @notice Checks if the entered ticker is registered and has not expired
-     * @param _ticker is the token ticker
-     * @return bool
-     */
-    function tickerAvailable(string calldata _ticker) external view returns(bool);
-
 }
