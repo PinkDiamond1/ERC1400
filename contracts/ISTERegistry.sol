@@ -4,8 +4,6 @@ pragma solidity ^0.5.0;
  * @title Interface for the STE Registry
  */
 interface ISTERegistry {
-// IN PROGRESS WILL NOT COMPILE Need to modify contract
-
     // Emit when network becomes paused
     event Pause(address account);
 
@@ -53,7 +51,7 @@ interface ISTERegistry {
      * @param _certificateActivated Whether to activate the certificates feature
      * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
      * @param _protocolVersion Version of securityToken contract
-     * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
+     * - `_protocolVersion` is the packed value of uint8[3] array (it will be calculated offchain)
      * - if _protocolVersion == 0 then latest version of securityToken will be generated
      */
     function generateNewSecurityToken(
@@ -140,16 +138,13 @@ interface ISTERegistry {
      */
     function getSTFactoryAddress() external view returns(address stFactoryAddress);
 
-    /**
-     * @notice Get Protocol version
-     */
-    function getLatestProtocolVersion() external view returns(uint8[] memory protocolVersion);
 
     /**
-     * @notice Returns the list of all tokens
+     * @notice Returns the list of all tokens owned by a particular owner
+     * @param _owner the security token (likely us)
      * @dev Intention is that this is called off-chain so block gas limit is not relevant
      */
-    function getTokens() external view returns(address[] memory tokens);
+    function getTokens(address _owner) external view returns(address[] memory tokens);
 
 
     /**
