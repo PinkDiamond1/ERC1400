@@ -64,16 +64,17 @@ interface ISTERegistry {
         bytes32[] calldata _defaultPartitions,
         uint256 _protocolVersion
     )
-        external;
+        external 
+        returns(address securityTokenAddress);
 
     /**
-    * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
+    * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the IERC1400 interface)
      * @param _ticker is the ticker symbol of the security token
     * @param _owner is the owner of the token
      * @param _securityToken is the address of the securityToken
      * @param _deployedAt is the timestamp at which the security token is deployed
      */
-    function modifyExistingSecurityToken(
+    function addExistingSecurityTokenToRegistry(
         string calldata _ticker,
         address _owner,
         address _securityToken,

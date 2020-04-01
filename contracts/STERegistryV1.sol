@@ -211,9 +211,11 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 _protocolVersion
     )
         public
-        whenNotPausedOrOwner
+        //whenNotPausedOrOwner
+        onlyOwner
+        returns(address securityTokenAddress)
     {
-        require(bytes(_name).length > 0 && bytes(_ticker).length > 0, "Bad ticker");
+        require(bytes(_name).length > 0 && bytes(_ticker).length > 1 && bytes(_ticker).length <11 , "Bad ticker");
         if (_protocolVersion == 0) {
             _protocolVersion = getUintValue(LATEST_VERSION);
         }
@@ -221,13 +223,14 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         bytes32 statusKey = Encoder.getKey("registeredTickers_status", _ticker);
         require(!getBoolValue(statusKey), "Already deployed");
         set(statusKey, true);
-        address issuer = msg.sender;
-        require(_tickerOwner(_ticker) == issuer, "Not authorised");
+        
         address newSecurityTokenAddress =
             _deployToken(_name, _ticker, _granularity, _controllers, _certificateSigner, _certificateActivated, _defaultPartitions, _owner, _protocolVersion);
+        // Example to use protocol version to make other logic.
         // if (_protocolVersion == VersionUtils.pack(2, 0, 0)) {
          emit NewSecurityToken(
                 _ticker, _name, newSecurityTokenAddress, _owner, now, msg.sender, true, _protocolVersion);
+        return newSecurityTokenAddress;
     }
 
 
@@ -243,14 +246,14 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 _protocolVersion
     )
         internal
-        returns(address newSecurityTokenAddress)
+        returns(address securityTokenAddress)
     {
         uint8[] memory upperLimit = new uint8[](3);
         upperLimit[0] = 2;
         upperLimit[1] = 99;
         upperLimit[2] = 99;
 
-        newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
+        address newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
             _name,
             _ticker,
             _granularity,
@@ -262,18 +265,19 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         );
 
         /*solium-disable-next-line security/no-block-members*/
-        _storeSecurityTokenData(newSecurityTokenAddress, _ticker, now);
+        _storeSecurityTokenData(newSecurityTokenAddress, _ticker, now, _owner);
         set(Encoder.getKey("tickerToSecurityToken", _ticker), newSecurityTokenAddress);
+        return newSecurityTokenAddress;
     }
 
     /**
-     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the ISecurityToken interface)
+     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the IERC1400 interface)
      * @param _ticker is the ticker symbol of the security token
      * @param _owner is the owner of the token
      * @param _securityToken is the address of the securityToken
      * @param _deployedAt is the timestamp at which the security token is deployed
      */
-    function modifyExistingSecurityToken(
+    function addExistingSecurityTokenToRegistry(
         string memory _ticker,
         address _owner,
         address _securityToken,
@@ -283,18 +287,20 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         onlyOwner
     {
         require(bytes(_ticker).length <= 10, "Bad ticker");
-        require(_deployedAt != 0 && _owner != address(0), "Bad data");
+        require(_owner != address(0), "Bad owner");
         string memory ticker = Util.upper(_ticker);
         require(_securityToken != address(0), "Bad address");
+        if(_deployedAt == 0) {
+            _deployedAt = now;
+        }
         uint256 registrationTime = getUintValue(Encoder.getKey("registeredTickers_registrationDate", ticker));
         if (registrationTime == 0) {
-            /*solium-disable-next-line security/no-block-members*/
             registrationTime = now;
         }
         set(Encoder.getKey("tickerToSecurityToken", ticker), _securityToken);
         _modifyTicker(_owner, ticker, registrationTime, true);
-        _storeSecurityTokenData(_securityToken, ticker, _deployedAt);
-        // TODO add protocol version below or make a decision in respect
+        _storeSecurityTokenData(_securityToken, ticker, _deployedAt, _owner);
+        // Emit event with Protocol version of 0 for external security tokens.
         emit NewSecurityToken(
             ticker, IERC1400Raw(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0));
     }
@@ -336,8 +342,11 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function _storeSecurityTokenData(
         address _securityToken,
         string memory _ticker,
-        uint256 _deployedAt
+        uint256 _deployedAt,
+        address _owner
     ) internal {
+        set(Encoder.getKey("registeredTickers_status", _ticker), true);
+        set(Encoder.getKey("registeredTickers_owner", _ticker), _owner);
         set(Encoder.getKey("securityTokens_ticker", _securityToken), _ticker);
         set(Encoder.getKey("securityTokens_deployedAt", _securityToken), _deployedAt);
     }
