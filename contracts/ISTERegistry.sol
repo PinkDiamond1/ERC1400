@@ -90,16 +90,6 @@ interface ISTERegistry {
     function isSecurityToken(address _securityToken) external view returns(bool isValid);
 
     /**
-     * @notice Registers the token ticker for its particular owner
-     * @notice once the token ticker is registered to its owner then no other issuer can claim
-     * @notice its ownership. If the ticker expires and its issuer hasn't used it, then someone else can take it.
-     * @param _owner Address of the owner of the token
-     * @param _ticker Token ticker
-     * @param _tokenName Name of the token
-     */
-    function registerTicker(address _owner, string calldata _ticker, string calldata _tokenName) external;
-
-    /**
      * @notice Removes the ticker details and associated ownership & security token mapping
      * @param _ticker Token ticker
      */

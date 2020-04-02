@@ -223,7 +223,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         bytes32 statusKey = Encoder.getKey("registeredTickers_status", _ticker);
         require(!getBoolValue(statusKey), "Already deployed");
         set(statusKey, true);
-        
+
         address newSecurityTokenAddress =
             _deployToken(_name, _ticker, _granularity, _controllers, _certificateSigner, _certificateActivated, _defaultPartitions, _owner, _protocolVersion);
         // Example to use protocol version to make other logic.
@@ -265,6 +265,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         );
 
         /*solium-disable-next-line security/no-block-members*/
+        _setTickerOwnership(_owner, _ticker);
         _storeSecurityTokenData(newSecurityTokenAddress, _ticker, now, _owner);
         set(Encoder.getKey("tickerToSecurityToken", _ticker), newSecurityTokenAddress);
         return newSecurityTokenAddress;
@@ -373,31 +374,6 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function _implementation() internal view returns(address) {
         return getAddressValue(STRGETTER);
     }
-
-
-    /**
-     * @notice Registers the token ticker to the selected owner
-     * @notice Once the token ticker is registered to its owner then no other issuer can claim
-     * @notice its ownership. If the ticker expires and its issuer hasn't used it, then someone else can take it.
-     * @param _owner is address of the owner of the token
-     * @param _ticker is unique token ticker
-     * @param _tokenName is unique token name
-     */
-    function registerTicker(address _owner, string memory _ticker, string memory _tokenName) public whenNotPausedOrOwner {
-        require(_owner != address(0), "Bad address");
-        require(bytes(_ticker).length > 0 && bytes(_ticker).length <= 10, "Bad ticker");
-        require(bytes(_tokenName).length > 0, "Bad token name");
-        string memory ticker = Util.upper(_ticker);
-        require(tickerAvailable(ticker), "Ticker reserved");
-        // Check whether ticker was previously registered (and expired) // This is not necessary
-        address previousOwner = _tickerOwner(ticker);
-        if (previousOwner != address(0)) {
-            _deleteTickerOwnership(previousOwner, ticker);
-        }
-        /*solium-disable-next-line security/no-block-members*/
-        _addTicker(_owner, ticker, now, false, false);
-    }
-
 
     /**
      * @notice Internal - Sets the details of the ticker
