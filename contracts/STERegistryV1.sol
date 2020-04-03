@@ -10,6 +10,7 @@ import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
 import "./libraries/VersionUtils.sol";
 import "./libraries/DecimalMath.sol";
+import "./libraries/IOwnable.sol";
 import "./proxy/OwnedUpgradeabilityProxy.sol";
 
 /**
@@ -525,7 +526,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     * @param _STFactoryAddress is the address of the proxy.
     * @param _major Major version of the proxy.
     * @param _minor Minor version of the proxy.
-    * @param _patch Patch version of the proxy
+    * @param _patch Patch version of the proxy.
     */
     function setProtocolFactory(address _STFactoryAddress, uint8 _major, uint8 _minor, uint8 _patch) public onlyOwner {
         _setProtocolFactory(_STFactoryAddress, _major, _minor, _patch);
@@ -544,7 +545,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     * @notice Removes a STFactory
     * @param _major Major version of the proxy.
     * @param _minor Minor version of the proxy.
-    * @param _patch Patch version of the proxy
+    * @param _patch Patch version of the proxy.
     */
     function removeProtocolFactory(uint8 _major, uint8 _minor, uint8 _patch) public onlyOwner {
         uint24 _packedVersion = VersionUtils.pack(_major, _minor, _patch);
@@ -558,7 +559,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     * @notice Changing versions does not affect existing tokens.
     * @param _major Major version of the proxy.
     * @param _minor Minor version of the proxy.
-    * @param _patch Patch version of the proxy
+    * @param _patch Patch version of the proxy.
     */
     function setLatestVersion(uint8 _major, uint8 _minor, uint8 _patch) public onlyOwner {
         _setLatestVersion(_major, _minor, _patch);
@@ -571,14 +572,63 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         emit LatestVersionSet(_major, _minor, _patch);
     }
 
-     /**
-     * @notice Returns the list of all tokens for a particular owner
-     * @dev Intention is that this is called off-chain so block gas limit is not relevant
+    /**
+     * @notice Returns the list of tickers owned by the selected address
+     * @param _owner is the address which owns the list of tickers
      */
-    function getTokens(address _owner) external view returns(address[] memory tokens)
-    {
-         bytes32 _ownerKey = Encoder.getKey("userToTickers", _owner);
-         return getArrayAddress(_ownerKey);
+    function getTickersByOwner(address _owner) external view returns(bytes32[] memory) {
+        uint256 count = 0;
+        // accessing the data structure userTotickers[_owner].length
+        bytes32[] memory tickersb32 = getArrayBytes32(Encoder.getKey("userToTickers", _owner));
+        uint i;
+        for (i = 0; i < tickersb32.length; i++) {
+            if (_ownerInTicker(tickersb32[i])) {
+                count++;
+            }
+        }
+        bytes32[] memory result = new bytes32[](count);
+        count = 0;
+        for (i = 0; i < tickersb32.length; i++) {
+            if (_ownerInTicker(tickersb32[i])) {
+                result[count] = tickersb32[i];
+                count++;
+            }
+        }
+        return result;
+    }
+
+    function _ownerInTicker(bytes32 _ticker) internal view returns (bool) {
+        string memory ticker = Util.bytes32ToString(_ticker);
+        /*solium-disable-next-line security/no-block-members*/
+        if (getBoolValue(Encoder.getKey("registeredTickers_status", ticker))) {
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * @notice Returns the list of all tokens for a specific owner
+     */
+    function getTokensForOwner(address _owner) public view returns(address[] memory) {
+               uint256 count = 0;
+        // accessing the data structure userTotickers[_owner].length
+        bytes32[] memory tickers = getArrayBytes32(Encoder.getKey("userToTickers", _owner));
+        uint i;
+        for (i = 0; i < tickers.length; i++) {
+            if (_ownerInTicker(tickers[i])) {
+                count++;
+            }
+        }
+        address[] memory result = new address[](count);
+        count = 0;
+        for (i = 0; i < tickers.length; i++) {
+            if (_ownerInTicker(tickers[i])) {
+                result[count] = getAddressValue(Encoder.getKey("tickerToSecurityToken", Util.bytes32ToString(tickers[i])));
+                count++;
+            }
+        }
+        return result;
     }
 
        /**
@@ -589,7 +639,6 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function getTickerOwner(string calldata _ticker) external view returns(address tickerOwner){
         return _tickerOwner(_ticker);
     }
-
 
     /////////////////////////////
     // Ownership, lifecycle & Utility

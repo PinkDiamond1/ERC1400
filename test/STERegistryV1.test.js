@@ -1,4 +1,4 @@
-const { soliditySha3 } = require('web3-utils');
+const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
 import { shouldFail } from 'openzeppelin-test-helpers';
 
 const ERC1400 = artifacts.require('ERC1400');
@@ -134,10 +134,39 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       beforeEach(async function () {
         this.thisTokenTicker5 = 'DAU5';
         this.thisTokenName5 = 'ERC1400Token5';
+
         this.newSecurityToken = await this.steRegistryV1
         .generateNewSecurityToken(this.thisTokenName5, this.thisTokenTicker5 , 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0);
+        let log = this.newSecurityToken.logs[2];
+        this.newcontractAddress5 = log.args._securityTokenAddress;
+
+        this.updatedTokenFactory = await STEFactory.new();
        });
-    describe('removeTicker', function () {
+
+     describe('getTokensForOwner', function () {
+      it('gets tokens for a specific owner', async function () {
+        // Make a second token
+        this.thisTokenTicker6 = 'DAU6';
+        this.newSecurityToken = await this.steRegistryV1
+        .generateNewSecurityToken('ERC1400Token6', this.thisTokenTicker6 , 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0);
+        let log = this.newSecurityToken.logs[2];
+        this.newcontractAddress6 = log.args._securityTokenAddress;
+
+
+        const tickerOwner6 = await this.steRegistryV1.getTickerOwner(this.thisTokenTicker6);
+        assert.equal(tickerOwner6, owner);
+        const allTickersForOwner = await this.steRegistryV1.getTickersByOwner(owner);
+        const utf8Tickers = allTickersForOwner.map((ticker) => {return hexToUtf8(ticker)});
+        assert.equal(utf8Tickers[0], this.thisTokenTicker5);
+        assert.equal(utf8Tickers[1], this.thisTokenTicker6);
+
+        const allTokensForOwner = await this.steRegistryV1.getTokensForOwner(owner);
+        assert.equal(allTokensForOwner[0], this.newcontractAddress5);
+        assert.equal(allTokensForOwner[1], this.newcontractAddress6);
+        });
+       });
+
+     describe('removeTicker', function () {
       it('gets ticker owner and removesTicker', async function () {
         const tickerOwner = await this.steRegistryV1.getTickerOwner(this.thisTokenTicker5);
         assert.equal(tickerOwner, owner);
@@ -147,7 +176,58 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
         const tickerOwnerNew = await this.steRegistryV1.getTickerOwner(this.thisTokenTicker5);
         assert.equal(tickerOwnerNew, 0);
         });
-    });
+       });
+
+     describe('getSecurityTokenData', function () {
+      it('gets appropriate security token data information', async function () {
+        const securityTokenData = await this.steRegistryV1.getSecurityTokenData(this.newcontractAddress5);
+        assert.equal(securityTokenData.tokenSymbol, this.thisTokenTicker5);
+        assert.equal(securityTokenData.tokenAddress, this.newcontractAddress5);
+        assert.equal(securityTokenData.tokenTime.toNumber(), 0);
+        });
+       });
+
+     describe('getSTFactoryAddress', function () {
+      it('gets the st factory address', async function () {
+        const stFactoryAddress = await this.steRegistryV1.getSTFactoryAddress();
+        assert.equal(this.tokenFactory.address, stFactoryAddress);
+        });
+       });
+
+     describe('addNewSTEFactoryAndUpdateToLatestVersionRemovingOldVersionAsWell', function () {
+      it('adds new ste factory, updates the version, removes the old version', async function () {
+        await this.steRegistryV1.setProtocolFactory(this.updatedTokenFactory.address, 0, 0, 2);
+        await this.steRegistryV1.setLatestVersion(0, 0, 2);
+        const stFactoryAddress = await this.steRegistryV1.getSTFactoryAddress();
+        assert.equal(this.updatedTokenFactory.address, stFactoryAddress);
+        await this.steRegistryV1.removeProtocolFactory(0, 0, 1)
+        });
+       });
+
+     describe('canPauseAndUnpause', function () {
+      it('pause and unpause', async function () {
+        assert.isFalse(await this.steRegistryV1.isPaused());
+        await this.steRegistryV1.pause();
+        assert.isTrue(await this.steRegistryV1.isPaused());
+        await this.steRegistryV1.unpause();
+        assert.isFalse(await this.steRegistryV1.isPaused());
+        });
+       });
+
+     describe('getOwner', function () {
+      it('gets the owner', async function () {
+        const steRegistryOwner = await this.steRegistryV1.owner();
+        assert.equal(owner, steRegistryOwner);
+        });
+       });
+
+     describe('canTransferOwnership', function () {
+      it('transfers ownership', async function () {
+        await this.steRegistryV1.transferOwnership(unknown);
+        const steRegistryOwner = await this.steRegistryV1.owner();
+        assert.equal(unknown, steRegistryOwner);
+        });
+       });
     });
 
     //// Upgradeability tests, leave at the end.
