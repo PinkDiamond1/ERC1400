@@ -12,10 +12,12 @@ const partitions = [partition1, partition2, partition3];
 const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
 
 module.exports = async function (deployer, network, accounts) {
+	/*
   const tokenInstance = await ERC1400ERC20.deployed();
   console.log('\n   > Add token extension for token deployed at address', tokenInstance.address);
   await deployer.deploy(Extension, true, false);
   console.log('\n   > Token extension deployment: Success -->', Extension.address);
   await tokenInstance.setHookContract(Extension.address, ERC1400_TOKENS_VALIDATOR);
   console.log('\n   > Token connection to extension: Success');
+  */
 };

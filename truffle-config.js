@@ -16,6 +16,10 @@ const ropstenProvider = process.env.SOLIDITY_COVERAGE
   ? undefined
   : infuraProvider('ropsten');
 
+const kovanProvider = process.env.SOLIDITY_COVERAGE
+  ? undefined
+  : infuraProvider('kovan');
+
 module.exports = {
   networks: {
     development: {
@@ -26,7 +30,10 @@ module.exports = {
     ropsten: {
       provider: ropstenProvider,
       network_id: 3, // eslint-disable-line camelcase
-      gasPrice: 5000000000,
+    },
+    kovan: {
+      provider: kovanProvider,
+      network_id: 42, // eslint-disable-line camelcase
     },
     coverage: {
       host: 'localhost',
@@ -48,14 +55,17 @@ module.exports = {
       network_id: parseInt(process.env.NETWORK_ID) || '*', // eslint-disable-line camelcase
     },
   },
-  plugins: ["solidity-coverage"],
+  plugins: ["solidity-coverage", "truffle-plugin-verify"],
+  api_keys: {
+    etherscan: process.env.ETHERSCAN_API_KEY
+  },
   compilers: {
     solc: {
       version: '0.5.10',
       settings: {
         optimizer: {
           enabled: true, // Default: false
-          runs: 0, // Default: 200
+          runs: 1, // Default: 200
         },
       },
     },
