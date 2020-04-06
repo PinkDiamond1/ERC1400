@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 import "../token/ERC1400Partition/ERC1400Partition.sol";
 
 

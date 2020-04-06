@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
 /**
  * @title Helper library use to compare or validate the semantic versions

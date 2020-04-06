@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
 import "../token/ERC1400Raw/IERC1400TokensSender.sol";
 import "../token/ERC1820/ERC1820Implementer.sol";

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
 import "./ISTEFactory.sol";
 import "./ERC1400.sol";

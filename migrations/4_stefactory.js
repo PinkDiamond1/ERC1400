@@ -12,7 +12,7 @@ const partitions = [partition1, partition2, partition3];
 
 module.exports = async function (deployer, network, accounts) {
 
-	/* 
+	
   await deployer.deploy(STEFactory, 'v1');
 
   const factoryInstance = await STEFactory.deployed();
@@ -24,5 +24,5 @@ module.exports = async function (deployer, network, accounts) {
 
   const newToken2 = await factoryInstance.deployToken('ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions, controller);
   console.log('\n   > Token deployed: Transaction Success, did not revert');
-  */
+  
 };
