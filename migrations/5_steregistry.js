@@ -31,10 +31,12 @@ module.exports = async function (deployer, network, accounts) {
   console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
 
   // Set up the simple token extension
-  /*
+
   await deployer.deploy(Extension, true, false);
   console.log('\n   > Token extension deployment: Success -->', Extension.address);
-  */
+  const extensionInstance = await Extension.deployed();
+  await extensionInstance.addWhitelisted(accounts[0]);
+  
 
   // const newToken2 = await factoryInstance.deployToken('ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions, controller);
   // console.log('\n   > Token deployed: Transaction Success, did not revert');

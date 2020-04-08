@@ -6,22 +6,27 @@ const ERC1400ERC20 = artifacts.require('ERC1400ERC20');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
+const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidator');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
+const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
 const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+const VALID_CERTIFICATE = '0x1100000000000000000000000000000000000000000000000000000000000000';
+
 const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 
-const partition1_short = '5265736572766564000000000000000000000000000000000000000000000000'; // Reserved in hex
-const partition2_short = '4973737565640000000000000000000000000000000000000000000000000000'; // Issued in hex
-const partition3_short = '4c6f636b65640000000000000000000000000000000000000000000000000000'; // Locked in hex
-const partition1 = '0x'.concat(partition1_short);
-const partition2 = '0x'.concat(partition2_short);
-const partition3 = '0x'.concat(partition3_short);
-
+const partition1 = '0x5265736572766564000000000000000000000000000000000000000000000000'; // Reserved in hex
+const partition2 = '0x4973737565640000000000000000000000000000000000000000000000000000'; // Issued in hex
+const partition3 = '0x4c6f636b65640000000000000000000000000000000000000000000000000000'; // Locked in hex
+const ZERO_BYTE = '0x';
 const partitions = [partition1, partition2, partition3];
+
+const issuanceAmount = 100000;
+const approvedAmount = 50000;
+
 
 contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, controller_alternative2, tokenHolder, recipient, unknown]) {
   before(async function () {
@@ -32,6 +37,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
     beforeEach(async function () {
       this.tokenFactory = await STEFactory.new();
       this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, 0, 0, 1);
+      this.validatorContract = await ERC1400TokensValidator.new(true, false, { from: owner });
     });
 
     describe('initializeReverts', function () {
@@ -41,7 +47,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
     });
 
     describe('generateNewSecurityToken', function () {
-      it('generates new valid security token', async function () {
+      it('generates new valid security token and runs a scenario', async function () {
       const thisTokenTicker = 'DAU';
       const thisTokenName = 'ERC1400Token';
 
@@ -49,11 +55,15 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       assert.isTrue(isTickerCurrentlyRegistered);
 
       this.newSecurityToken = await this.steRegistryV1
-      .generateNewSecurityToken(thisTokenName, thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0);
+      .generateNewSecurityToken(thisTokenName, thisTokenTicker, 1, [controller], controller, true, partitions, owner, 0);
 
       let log = this.newSecurityToken.logs[2];
       this.newcontractAddress = log.args._securityTokenAddress;
       assert.isTrue(this.newcontractAddress.length >= 40);
+
+      // Get Security Token address from ticker
+      const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
+      assert.equal(tickerSTAddress, this.newcontractAddress); 
 
       //// Make sure the token works
       this.token = await ERC1400.at(this.newcontractAddress);
@@ -62,6 +72,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       assert.equal(name, thisTokenName);
       const symbol = await this.token.symbol();
       assert.equal(symbol, thisTokenTicker);
+
       // FOR ERC1820
        let interface1400Implementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_INTERFACE_NAME));
        assert.equal(interface1400Implementer, this.token.address);
@@ -69,9 +80,25 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const isTickerCurrentlyRegisteredNow = await this.steRegistryV1.tickerAvailable(thisTokenTicker);
       assert.isFalse(isTickerCurrentlyRegisteredNow);
 
-      // Get Security Token address from ticker
-      const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
-      assert.equal(tickerSTAddress, this.newcontractAddress); 
+      // Try issuing
+      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: owner});
+
+      await this.token.addMinter(controller);
+      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+
+       // Try whitelisting
+       await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
+
+       await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
+       await this.validatorContract.addWhitelisted(recipient, { from: owner });
+
+       assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
+       assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
+
+      // By Transferring
+     await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
+
+     await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
       });
     });
 
@@ -111,6 +138,9 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       it('Add Existing Security Token ERC1400ERC20 To Registry', async function () {
       const thisTokenTicker = 'DAU3';
       this.existingSecurityToken = await ERC1400ERC20.new('ERC1400Token3', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
+
+      // Existing token can make an issuance
+      await this.existingSecurityToken.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, { from: owner });
 
       //// Call appropriate function
        this.newExistingSecurityToken = await this.steRegistryV1
