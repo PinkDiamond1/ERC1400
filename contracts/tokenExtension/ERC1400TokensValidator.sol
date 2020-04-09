@@ -198,4 +198,13 @@ contract ERC1400TokensValidator is IERC1400TokensValidator, Ownable, Pausable, W
     _blacklistActivated = blacklistActivated;
   }
 
+  /**
+  * @dev kyc whitelist multiple users in a single transaction
+  * @param whitelistedUsers list of whitelisted users
+  */
+  function addWhitelistedMulti(address[] calldata whitelistedUsers) external {
+    for (uint256 i = 0; i < whitelistedUsers.length; i++) {
+        addWhitelisted(whitelistedUsers[i]);
+      }
+  }
 }

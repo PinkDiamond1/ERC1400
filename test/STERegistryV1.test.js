@@ -14,7 +14,7 @@ const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-const VALID_CERTIFICATE = '0x1100000000000000000000000000000000000000000000000000000000000000';
+const VALID_CERTIFICATE = '0x1000000000000000000000000000000000000000000000000000000000000000';
 
 const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 
@@ -89,16 +89,20 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
        // Try whitelisting
        await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
 
-       await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
-       await this.validatorContract.addWhitelisted(recipient, { from: owner });
+       let hookImplementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VALIDATOR));
+        assert.equal(hookImplementer, this.validatorContract.address);
 
-       assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
-       assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
 
-      // By Transferring
-     await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
+        // await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
+        // await this.validatorContract.addWhitelisted(recipient, { from: owner });
+         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient], {from: owner});
 
-     await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
+         assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
+         assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
+
+      // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
+      await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
+      await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
       });
     });
 
