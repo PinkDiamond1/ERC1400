@@ -6,7 +6,7 @@ const ERC1400ERC20 = artifacts.require('ERC1400ERC20');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
-const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidator');
+const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
@@ -85,6 +85,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
       await this.token.addMinter(controller);
       await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+      await this.token.issueByPartition(partition1, controller, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
        // Try whitelisting
        await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
@@ -92,10 +93,12 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
        let hookImplementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VALIDATOR));
         assert.equal(hookImplementer, this.validatorContract.address);
 
+        // Try transfer without whitelisting
+        await shouldFail.reverting(this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller }));
 
         // await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
         // await this.validatorContract.addWhitelisted(recipient, { from: owner });
-         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient], {from: owner});
+         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient, controller], {from: owner});
 
          assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
          assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
@@ -103,6 +106,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
       await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
       await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
+      await this.token.transferWithData(recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode with non controller
+      await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
+      // Mint even more tokens!
+      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
       });
     });
 
