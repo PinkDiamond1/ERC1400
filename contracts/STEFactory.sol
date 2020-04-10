@@ -40,6 +40,10 @@ contract STEFactory is ISTEFactory {
         // Set the owner of the ERC1400 contract
         ERC1400(securityToken).transferOwnership(_owner);
         ERC1400(securityToken).addMinter(_owner); 
+        // Could be something else like
+        // for (uint j = 0; j<_controllers.length; j++){
+        //    ERC1400(securityToken).addMinter(_controllers[j]);
+        // }
         
         return securityToken;
     }
