@@ -19,7 +19,7 @@ import "./proxy/OwnedUpgradeabilityProxy.sol";
 contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     /**
      * @notice state variables - these are the conceptual variables stored in eternal storage now.
-     
+
 
        bool public paused;
 
@@ -55,10 +55,10 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
 
     using SafeMath for uint256;
 
-   
+
     bytes32 constant OWNER = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0; //keccak256("owner")
     bytes32 constant LATEST_VERSION = 0x4c63b69b9117452b9f11af62077d0cda875fb4e2dbe07ad6f31f728de6926230; //keccak256("latestVersion")
-    bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")    
+    bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")
     bytes32 constant PAUSED = 0xee35723ac350a69d2a92d3703f17439cbaadf2f093a21ba5bf5f1a53eb2a14d9; //keccak256("paused")
     bytes32 constant STRGETTER = 0x982f24b3bd80807ec3cb227ba152e15c07d66855fa8ae6ca536e689205c0e2e9; //keccak256("STRGetter")
     bytes32 constant ACTIVE_USERS = 0x425619ce6ba8e9f80f17c0ef298b6557e321d70d7aeff2e74dd157bd87177a9e; //keccak256("activeUsers")
@@ -76,7 +76,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     // Emit when ownership gets transferred
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    // Emit at the time of launching a new security token 
+    // Emit at the time of launching a new security token
     event NewSecurityToken(
         string _ticker,
         string _name,
@@ -88,7 +88,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 _protocolVersion
     );
 
- 
+
     // Emit when registering a new ticker
     event RegisterTicker(
         address indexed _owner,
@@ -170,7 +170,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     function initialize(
         address _steFactoryAddress,
         uint8 _major,
-        uint8 _minor, 
+        uint8 _minor,
         uint8 _patch
     )
         public
@@ -493,7 +493,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
      * @return address
      */
     function getSecurityTokenAddress(string calldata _ticker) external view returns(address tokenAddress){
-        return getAddressValue(Encoder.getKey("tickerToSecurityToken", _ticker));
+        ticker = Util.upper(_ticker);
+        return getAddressValue(Encoder.getKey("tickerToSecurityToken", ticker));
     }
 
     /**
