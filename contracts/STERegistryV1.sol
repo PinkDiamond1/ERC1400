@@ -493,7 +493,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
      * @return address
      */
     function getSecurityTokenAddress(string calldata _ticker) external view returns(address tokenAddress){
-        ticker = Util.upper(_ticker);
+        string memory ticker = Util.upper(_ticker);
         return getAddressValue(Encoder.getKey("tickerToSecurityToken", ticker));
     }
 
