@@ -16,7 +16,7 @@ module.exports = async function (deployer, network, accounts) {
 
 
   // await deployer.deploy(ERC1400, 'ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions);
-  
+
   // console.log('\n   > Token extension deployment: Success -->', ERC1400.address);
 
   // Set up the STE Factory
@@ -24,14 +24,15 @@ module.exports = async function (deployer, network, accounts) {
   await deployer.deploy(STEFactory, 'v1');
   const factoryInstance = await STEFactory.deployed();
   console.log('\n   > ERC1400 factory deployment: Success -->', STEFactory.address);
+
 */
 
   // Set up the STE Registry
-/*
+
   await deployer.deploy(STERegistryV1, '0x1DD521f0Af3b33729CaC8298fe1802950fa47ee0', 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
   const registryInstance = await STERegistryV1.deployed();
   console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
-*/
+
 
   // Set up the simple token extension
 /*
@@ -40,13 +41,13 @@ module.exports = async function (deployer, network, accounts) {
   const extensionInstance = await Extension.deployed();
   await extensionInstance.addWhitelisted(accounts[0]);
 */
-
+/*
   // Set up a tokens checker
   await deployer.deploy(TokensChecker);
   console.log('\n   > Token checker deployment: Success -->', TokensChecker.address);
   const checkerInstance = await TokensChecker.deployed();
-  
 
+*/
   // const newToken2 = await factoryInstance.deployToken('ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions, controller);
   // console.log('\n   > Token deployed: Transaction Success, did not revert');
 };
