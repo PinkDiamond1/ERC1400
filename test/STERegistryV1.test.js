@@ -7,9 +7,11 @@ const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
+const ERC1400TokensChecker = artifacts.require('ERC1400TokensChecker');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
+const ERC1400_TOKENS_CHECKER = 'ERC1400TokensChecker';
 const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -38,6 +40,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       this.tokenFactory = await STEFactory.new();
       this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, 0, 0, 1);
       this.validatorContract = await ERC1400TokensValidator.new(true, false, { from: owner });
+      this.checkerContract = await ERC1400TokensChecker.new( { from: owner });
     });
 
     describe('initializeReverts', function () {
@@ -63,7 +66,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
       // Get Security Token address from ticker
       const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
-      assert.equal(tickerSTAddress, this.newcontractAddress); 
+      assert.equal(tickerSTAddress, this.newcontractAddress);
 
       //// Make sure the token works
       this.token = await ERC1400.at(this.newcontractAddress);
@@ -89,9 +92,12 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
        // Try whitelisting
        await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
+       await this.token.setHookContract(this.checkerContract.address, ERC1400_TOKENS_CHECKER, { from: owner });
 
-       let hookImplementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VALIDATOR));
-        assert.equal(hookImplementer, this.validatorContract.address);
+          let hookImplementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VALIDATOR));
+          assert.equal(hookImplementer, this.validatorContract.address);
+          let hookImplementer2 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_CHECKER));
+          assert.equal(hookImplementer2, this.checkerContract.address);
 
         // Try transfer without whitelisting
         await shouldFail.reverting(this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller }));
