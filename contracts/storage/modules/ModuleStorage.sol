@@ -5,7 +5,7 @@ import "../EternalStorage.sol";
 /**
  * @title Controller Module Storages
  */
-contract ModuleStorage is EternalStorage {
+contract ModuleStorage {
     address public factory;
     IERC1400 public securityToken;
 

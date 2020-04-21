@@ -8,6 +8,7 @@ const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 const ERC1400TokensChecker = artifacts.require('ERC1400TokensChecker');
+const MultipleIssuanceModule = artifacts.require('MultipleIssuanceModule');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
@@ -30,7 +31,7 @@ const issuanceAmount = 100000;
 const approvedAmount = 50000;
 
 
-contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, controller_alternative2, tokenHolder, recipient, unknown]) {
+contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, controller_alternative2, tokenHolder, recipient, randomTokenHolder, unknown]) {
   before(async function () {
     this.registry = await ERC1820Registry.at('0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24');
   });
@@ -68,6 +69,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
       assert.equal(tickerSTAddress, this.newcontractAddress);
 
+      // Check module
+      this.multiIssuanceModule = await MultipleIssuanceModule.new(this.newcontractAddress, {from: owner});
+
+
       //// Make sure the token works
       this.token = await ERC1400.at(this.newcontractAddress);
       // FOR TOKEN PROPERTIES
@@ -75,6 +80,14 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       assert.equal(name, thisTokenName);
       const symbol = await this.token.symbol();
       assert.equal(symbol, thisTokenTicker);
+
+     // ControllersByPartition interesting method
+     // console.log(await this.token.controllersByPartition(partition1));
+      await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
+      await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
+      // Important for a controller minter
+      await this.token.addMinter(controller);
+      await this.token.addMinter(this.multiIssuanceModule.address);
 
       // FOR ERC1820
        let interface1400Implementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_INTERFACE_NAME));
@@ -86,7 +99,6 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       // Try issuing
       await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: owner});
 
-      await this.token.addMinter(controller);
       await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
       await this.token.issueByPartition(partition1, controller, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
@@ -104,18 +116,56 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
         // await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
         // await this.validatorContract.addWhitelisted(recipient, { from: owner });
-         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient, controller], {from: owner});
+         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient, randomTokenHolder, controller], {from: owner});
 
          assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
+         assert.equal(await this.validatorContract.isWhitelisted(randomTokenHolder), true);
          assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
 
-      // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
-      await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
-      await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
-      await this.token.transferWithData(recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode with non controller
-      await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
-      // Mint even more tokens!
-      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+          // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
+          await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
+          await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
+          await this.token.transferWithData(recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode with non controller
+          await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
+          // Mint even more tokens!
+          await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+
+          // Issue multiple owner
+          await this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: owner});
+         // Issue multiple controller
+         await this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
+          // Issue multiple from random does not work
+          await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
+
+          // Force transfer multiple owner
+          await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+              [partition1, partition1],
+              [recipient, tokenHolder],
+              [randomTokenHolder, randomTokenHolder],
+              [1, 1],
+              ZERO_BYTE,
+              VALID_CERTIFICATE,
+              {from: owner});
+
+          // Force transfer multiple controller
+          await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+              [partition1, partition1],
+              [recipient, tokenHolder],
+              [randomTokenHolder, randomTokenHolder],
+              [1, 1],
+              ZERO_BYTE,
+              VALID_CERTIFICATE,
+              {from: controller});
+
+          // Force transfer multiple from unknown does not work
+          await shouldFail.reverting(this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+              [partition1, partition1],
+              [recipient, tokenHolder],
+              [randomTokenHolder, randomTokenHolder],
+              [issuanceAmount, issuanceAmount],
+              ZERO_BYTE,
+              VALID_CERTIFICATE,
+              {from: unknown}));
       });
     });
 

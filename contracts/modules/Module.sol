@@ -8,14 +8,14 @@ import "../storage/modules/ModuleStorage.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../proxy/OwnedUpgradeabilityProxy.sol";
+import "../token/ERC1820/ERC1820Implementer.sol";
 
 /**
  * @title Interface that any module contract should implement
  * @notice Contract is abstract
  * @notice On OwnedUpgradeabilityProxy, owner is msg.sender
  */
-contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy {
-
+contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, ERC1820Implementer {
     /**
      * @notice Constructor
      * @param _securityToken Address of the security token
@@ -27,7 +27,7 @@ contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy {
 
     //Allows owner, factory or permissioned delegate
     modifier withControllerPermission() {
-        require(_checkControllerPermission(msg.sender), "Invalid permission");
+        require(_checkControllerPermission(msg.sender), "Invalid controller permission");
         _;
     }
 
