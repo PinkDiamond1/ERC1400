@@ -13,6 +13,7 @@
     "build:STEFactory": "sol-merger \"./contracts/STEFactory.sol\" ./artifacts",
     "build:ERC1400TokensValidatorSTE": "sol-merger \"./contracts/tokenExtension/ERC1400TokensValidatorSTE.sol\" ./artifacts",
     "build:ERC1400TokensChecker": "sol-merger \"./contracts/tokenExtension/ERC1400TokennsChecker.sol\" ./artifacts",
+    "build:MultipleIssuanceModule": "sol-merger \"./contracts/modules/MultipleIssuance/MultipleIssuanceModule.sol\" ./artifacts",
     "build": "yarn run clean && yarn run build:ERC1400ERC20 && yarn run build:ERC1400TokensValidator",
     "clean": "rm -rf artifacts",
     "coverage": "yarn truffle run coverage",
