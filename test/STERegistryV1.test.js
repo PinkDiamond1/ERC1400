@@ -13,6 +13,7 @@ const MultipleIssuanceModule = artifacts.require('MultipleIssuanceModule');
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
 const ERC1400_TOKENS_CHECKER = 'ERC1400TokensChecker';
+const ERC1400_MULTIPLE_ISSUANCE = 'ERC1400MultipleIssuance';
 const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -102,14 +103,16 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
       await this.token.issueByPartition(partition1, controller, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
-       // Try whitelisting
        await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
        await this.token.setHookContract(this.checkerContract.address, ERC1400_TOKENS_CHECKER, { from: owner });
+       await this.token.setHookContract(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE, { from: owner });
 
           let hookImplementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VALIDATOR));
           assert.equal(hookImplementer, this.validatorContract.address);
           let hookImplementer2 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_CHECKER));
           assert.equal(hookImplementer2, this.checkerContract.address);
+          let hookImplementer3 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_MULTIPLE_ISSUANCE));
+          assert.equal(hookImplementer3, this.multiIssuanceModule.address);
 
         // Try transfer without whitelisting
         await shouldFail.reverting(this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller }));
