@@ -5,10 +5,9 @@ import "../token/ERC1400Raw/IERC1400TokensValidator.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
-import "openzeppelin-solidity/contracts/access/roles/WhitelistedRole.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-import "./roles/BlacklistedRole.sol";
+import "./rolesSTE/RoleManagement.sol";
 
 import "erc1820/contracts/ERC1820Client.sol";
 import "../token/ERC1820/ERC1820Implementer.sol";
@@ -18,10 +17,21 @@ import "../token/ERC1400Partition/IERC1400Partition.sol";
 import "../token/ERC1400Raw/IERC1400Raw.sol";
 import "../token/ERC1400Raw/IERC1400TokensSender.sol";
 import "../token/ERC1400Raw/IERC1400TokensRecipient.sol";
+import "../proxy/OwnedUpgradeabilityProxy.sol";
 
 
-contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable, WhitelistedRole, BlacklistedRole, ERC1820Client, ERC1820Implementer {
+contract ERC1400TokensValidatorSTE is
+  IERC1400TokensValidator,
+  OwnedUpgradeabilityProxy,
+  Ownable,
+  Pausable,
+  RoleManagement,
+  ERC1820Client,
+  ERC1820Implementer {
   using SafeMath for uint256;
+
+  uint256 constant internal MIN = uint256(1);
+  uint256 constant internal MAX = uint256(-1);
 
   string constant internal ERC1400_TOKENS_VALIDATOR = "ERC1400TokensValidator";
 
@@ -65,7 +75,7 @@ contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable
     bytes calldata operatorData
   ) // Comments to avoid compilation warnings for unused variables.
     external
-    view 
+    view
     returns(bool)
   {
     return(_canValidate(functionSig, partition, operator, from, to, value, data, operatorData));
@@ -130,6 +140,7 @@ contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable
     if(_functionRequiresValidation(functionSig)) {
       if(_whitelistActivated) {
         if(!isWhitelisted(from) || !isWhitelisted(to)) {
+          // Need to check flags and expirys
           return false;
         }
       }
@@ -139,7 +150,7 @@ contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable
         }
       }
     }
-    
+
     return true;
   }
 
@@ -150,12 +161,12 @@ contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable
    */
   function _functionRequiresValidation(bytes4 functionSig) internal pure returns(bool) {
   // Here we define specific functions on the ERC1400 contract that require whitelisting of users.
-    if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID) 
+    if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID)
           || areEqual(functionSig, ERC20_TRANSFERFROM_FUNCTION_ID)
           || areEqual(functionSig, ERC1400_TRANSFERWITHDATA_FUNCTION_ID)
           || areEqual(functionSig, ERC1400_TRANSFERFROMWITHDATA_FUNCTION_ID)
           || areEqual(functionSig, ERC1400_TRANSFERBYPARTITION_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID)) 
+          || areEqual(functionSig, ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID))
     {
       return true;
     } else {
@@ -207,15 +218,5 @@ contract ERC1400TokensValidatorSTE is IERC1400TokensValidator, Ownable, Pausable
    */
   function setBlacklistActivated(bool blacklistActivated) external onlyOwner {
     _blacklistActivated = blacklistActivated;
-  }
-
-  /**
-  * @dev kyc whitelist multiple users in a single transaction
-  * @param whitelistedUsers list of whitelisted users
-  */
-  function addWhitelistedMulti(address[] calldata whitelistedUsers) external {
-    for (uint256 i = 0; i < whitelistedUsers.length; i++) {
-        addWhitelisted(whitelistedUsers[i]);
-      }
   }
 }
