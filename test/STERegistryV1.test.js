@@ -119,13 +119,13 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
         // await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
         // await this.validatorContract.addWhitelisted(recipient, { from: owner });
-          
-          const whitelistBytes = 0b000001;
-          const blacklistBytes = 0b000010;
-          const friendsFamilyBytes = 0b000100;
-          const accreditedBytes = 0b001000;
-          const eligibleBytes = 0b010000;
-          const dealerAdvised = 0b100000;
+
+          const whitelistBytes = 0b1;
+          const blacklistBytes = 0b1 << 1;
+          const friendsFamilyBytes = 0b1 << 2;
+          const accreditedBytes = 0b1 << 3;
+          const eligibleBytes = 0b1 << 4;
+          const dealerAdvised = 0b1 << 5;
 
           // Using bitwise OR to send what roles I want to the contract
          await this.validatorContract.addRolesMulti(
