@@ -28,13 +28,49 @@ contract RoleManagement is AdminRole {
     event DealerAdvisedInvestorAdded(address indexed account);
     event DealerAdvisedInvestorRemoved(address indexed account);
 
-    Roles.Role private _blacklistedInvestors;
-    Roles.Role private _whitelistedsInvestors;
-    Roles.Role private _friendsFamilyInvestors;
-    Roles.Role private _accreditedInvestors;
-    Roles.Role private _eligibleInvestors;
-    Roles.Role private _dealerAdvisedInvestors;
+    uint256 internal constant ONE = uint256(1);
 
+    // Roles available - // Index for role multi assigning
+    Roles.Role private _whitelistedInvestors; // 0
+    Roles.Role private _blacklistedInvestors; // 1
+    Roles.Role private _friendsFamilyInvestors; // 2
+    Roles.Role private _accreditedInvestors; // 3
+    Roles.Role private _eligibleInvestors; // 4
+    Roles.Role private _dealerAdvisedInvestors; // 5
+
+    function getBoolean(uint256 _packedBools, uint256 _boolNumber)
+    public view returns(bool)
+    {
+        uint256 flag = (_packedBools >> _boolNumber) & ONE;
+        return (flag == 1 ? true : false);
+    }
+    /**
+    * @dev kyc whitelist multiple users in a single transaction
+    * @param kycUsers list of whitelisted users
+    * @param flags list of whitelisted users flags in boolean form
+    */
+    function addRolesMulti(address[] calldata kycUsers, uint256[] calldata flags) external {
+        for (uint256 i = 0; i < kycUsers.length; i++) {
+            if(getBoolean(flags[i], uint256(0))){
+                addWhitelisted(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(1))){
+                addBlacklisted(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(2))){
+                addFriendsFamilyInvestor(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(3))){
+                addAccreditedInvestor(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(4))){
+                addEligibleInvestor(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(5))){
+                addDealerAdvisedInvestor(kycUsers[i]);
+            }
+        }
+    }
 
     // Whitelist
     modifier onlyWhitelisted() {
@@ -42,18 +78,8 @@ contract RoleManagement is AdminRole {
         _;
     }
 
-    /**
-    * @dev kyc whitelist multiple users in a single transaction
-    * @param whitelistedUsers list of whitelisted users
-    */
-    function addWhitelistedMulti(address[] calldata whitelistedUsers) external {
-        for (uint256 i = 0; i < whitelistedUsers.length; i++) {
-            addWhitelisted(whitelistedUsers[i]);
-        }
-    }
-
     function isWhitelisted(address account) public view returns (bool) {
-        return _whitelistedsInvestors.has(account);
+        return _whitelistedInvestors.has(account);
     }
 
     function addWhitelisted(address account) public onlyAdmin {
@@ -65,12 +91,12 @@ contract RoleManagement is AdminRole {
     }
 
     function _addWhitelisted(address account) internal {
-        _whitelistedsInvestors.add(account);
+        _whitelistedInvestors.add(account);
         emit WhitelistedInvestorAdded(account);
     }
 
     function _removeWhitelisted(address account) internal {
-        _whitelistedsInvestors.remove(account);
+        _whitelistedInvestors.remove(account);
         emit WhitelistedInvestorRemoved(account);
     }
 

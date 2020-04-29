@@ -18,7 +18,7 @@ contract AdminRole {
     }
 
     modifier onlyAdmin() {
-        require(isAdmin(msg.sender));
+        require(isAdmin(msg.sender), "Not Admin");
         _;
     }
 

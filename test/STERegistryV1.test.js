@@ -32,7 +32,7 @@ const issuanceAmount = 100000;
 const approvedAmount = 50000;
 
 
-contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, controller_alternative2, tokenHolder, recipient, randomTokenHolder, unknown]) {
+contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
   before(async function () {
     this.registry = await ERC1820Registry.at('0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24');
   });
@@ -52,7 +52,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
     });
 
     describe('generateNewSecurityToken', function () {
-      it('generates new valid security token and runs a scenario', async function () {
+      it('generates new valid security token and runs a integration test scenario', async function () {
       const thisTokenTicker = 'DAU';
       const thisTokenName = 'ERC1400Token';
 
@@ -119,11 +119,38 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
         // await this.validatorContract.addWhitelisted(tokenHolder, { from: owner });
         // await this.validatorContract.addWhitelisted(recipient, { from: owner });
-         await this.validatorContract.addWhitelistedMulti([tokenHolder, recipient, randomTokenHolder, controller], {from: owner});
+          
+          const whitelistBytes = 0b000001;
+          const blacklistBytes = 0b000010;
+          const friendsFamilyBytes = 0b000100;
+          const accreditedBytes = 0b001000;
+          const eligibleBytes = 0b010000;
+          const dealerAdvised = 0b100000;
 
-         assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
-         assert.equal(await this.validatorContract.isWhitelisted(randomTokenHolder), true);
-         assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
+          // Using bitwise OR to send what roles I want to the contract
+         await this.validatorContract.addRolesMulti(
+             [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
+                [whitelistBytes | eligibleBytes,
+                 whitelistBytes | friendsFamilyBytes,
+                 whitelistBytes | accreditedBytes,
+                 whitelistBytes | dealerAdvised,
+                 whitelistBytes,
+                blacklistBytes | friendsFamilyBytes], {from: owner});
+
+          assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
+          assert.equal(await this.validatorContract.isWhitelisted(randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
+          assert.equal(await this.validatorContract.isBlacklisted(tokenHolder), false);
+          assert.equal(await this.validatorContract.isBlacklisted(randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isBlacklisted(recipient), false);
+          assert.equal(await this.validatorContract.isBlacklisted(blacklisted), true);
+
+          assert.equal(await this.validatorContract.isEligibleInvestor(tokenHolder), true);
+          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(recipient), true);
+          assert.equal(await this.validatorContract.isAccreditedInvestor(randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isDealerAdvisedInvestor(randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isDealerAdvisedInvestor(randomTokenHolder2), true);
+          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(blacklisted), true);
 
           // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
           await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
