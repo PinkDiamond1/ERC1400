@@ -10,6 +10,14 @@ import "./AdminRole.sol";
 contract RoleManagement is AdminRole {
     using Roles for Roles.Role;
 
+    struct KYCValidity {
+        uint256 canSendAfter;
+        uint256 canReceiveAfter;
+        uint256 kycExpiredAfter;
+    }
+
+    mapping(address => KYCValidity) public kycValidityMap;
+
     event WhitelistedInvestorAdded(address indexed account);
     event WhitelistedInvestorRemoved(address indexed account);
 
@@ -49,8 +57,10 @@ contract RoleManagement is AdminRole {
     * @param kycUsers list of whitelisted users
     * @param flags list of whitelisted users flags in boolean form
     */
-    function addRolesMulti(address[] calldata kycUsers, uint256[] calldata flags) external {
+    function addRolesMulti(address[] calldata kycUsers, uint256[] calldata flags, uint256[] calldata canSendAfters, uint256[] calldata canReceiveAfters, uint256[] calldata kycExpiredAfters) external {
         for (uint256 i = 0; i < kycUsers.length; i++) {
+            addKycValidTimes(kycUsers[i], canSendAfters[i], canReceiveAfters[i], kycExpiredAfters[i]);
+
             if(getBoolean(flags[i], uint256(0))){
                 addWhitelisted(kycUsers[i]);
             }
@@ -71,6 +81,26 @@ contract RoleManagement is AdminRole {
             }
         }
     }
+
+    // KYC expiry and valid timings (UTC)
+    function addKycValidTimes(address _account, uint256 _canSendAfter, uint256 _canReceiveAfter, uint256 _kycExpiredAfter) public onlyAdmin {
+        kycValidityMap[_account].canSendAfter = _canSendAfter;
+        kycValidityMap[_account].canReceiveAfter = _canReceiveAfter;
+        kycValidityMap[_account].kycExpiredAfter = _kycExpiredAfter;
+    }
+
+    function kycUserCanSend(address _account) public view returns (bool) {
+        return (kycValidityMap[_account].canSendAfter <= now && !kycUserIsExpired(_account));
+    }
+
+    function kycUserCanReceive(address _account) public view returns (bool) {
+        return (kycValidityMap[_account].canReceiveAfter <= now && !kycUserIsExpired(_account));
+    }
+
+    function kycUserIsExpired(address _account) public view returns (bool) {
+        return (kycValidityMap[_account].kycExpiredAfter < now);
+    }
+
 
     // Whitelist
     modifier onlyWhitelisted() {

@@ -127,6 +127,9 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           const eligibleBytes = 0b1 << 4;
           const dealerAdvised = 0b1 << 5;
 
+          const currentTime = Math.floor(Date.now() / 1000);
+          const futureTime = Math.round(new Date(2040,0).getTime()/1000);
+
           // Using bitwise OR to send what roles I want to the contract
          await this.validatorContract.addRolesMulti(
              [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
@@ -135,7 +138,11 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
                  whitelistBytes | accreditedBytes,
                  whitelistBytes | dealerAdvised,
                  whitelistBytes,
-                blacklistBytes | friendsFamilyBytes], {from: owner});
+                blacklistBytes | friendsFamilyBytes],
+                Array(6).fill(currentTime),
+                Array(6).fill(currentTime),
+                Array(6).fill(futureTime),
+             {from: owner});
 
           assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
           assert.equal(await this.validatorContract.isWhitelisted(randomTokenHolder), true);
