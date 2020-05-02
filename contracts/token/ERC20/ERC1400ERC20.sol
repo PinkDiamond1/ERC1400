@@ -6,7 +6,7 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-import "./ERC1400.sol";
+import "../../ERC1400.sol";
 
 
 /**
@@ -187,7 +187,7 @@ contract ERC1400ERC20 is IERC20, ERC1400 {
    * @dev Migrate contract.
    *
    * ===> CAUTION: DEFINITIVE ACTION
-   * 
+   *
    * This function shall be called once a new version of the smart contract has been created.
    * Once this function is called:
    *  - The address of the new smart contract is set in ERC1820 registry

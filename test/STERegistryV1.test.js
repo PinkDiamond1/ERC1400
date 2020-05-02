@@ -31,6 +31,8 @@ const partitions = [partition1, partition2, partition3];
 const issuanceAmount = 100000;
 const approvedAmount = 50000;
 
+const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 150;
+
 
 contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
   before(async function () {
@@ -167,8 +169,19 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           // Mint even more tokens!
           await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
-          // Issue multiple owner
-          await this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: owner});
+          this.issuancePartitions = [];
+          this.tokenHolders = [];
+          this.values = [];
+
+          for(let index=0; index < MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH; index++) {
+
+              this.issuancePartitions.push(partition1);
+              this.tokenHolders.push(tokenHolder);
+              this.values.push(index);
+          }
+          // Issue multiple owner for max amount of times
+          await this.multiIssuanceModule.issueByPartitionMultiple(this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: owner});
+
          // Issue multiple controller
          await this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
           // Issue multiple from random does not work
