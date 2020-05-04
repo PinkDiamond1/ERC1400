@@ -7,6 +7,21 @@ contract MultipleIssuanceModule is Module {
 
     string constant internal ERC1400_MULTIPLE_ISSUANCE = "ERC1400MultipleIssuance";
 
+    struct Exemption {
+        uint256 index;
+        uint256 totalBalanceIssuedUnderExemption;
+        mapping(bytes32 => ExemptionByPartition) exemptionMapByPartition;
+    }
+
+    struct ExemptionByPartition {
+        uint256 totalPartitionedBalanceIssuedUnderExemption;
+        mapping(address => uint256) totalPartitionBalanceByTokenHolderIssuedUnderExemption;
+    }
+
+    // Array of exemptions
+    bytes32[] internal _exemptions;
+    mapping(bytes32 => Exemption) public transactionIndexesToSender;
+
     /**
      * @notice Constructor
      * @param _securityToken Address of the security token
