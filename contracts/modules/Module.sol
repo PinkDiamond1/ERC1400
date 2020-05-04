@@ -3,12 +3,11 @@ pragma solidity 0.5.10;
 import "./IModule.sol";
 import "../Pausable.sol";
 import "../IERC1400.sol";
-import "../token/ERC1400Raw/IERC1400Raw.sol";
 import "../storage/modules/ModuleStorage.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../proxy/OwnedUpgradeabilityProxy.sol";
-import "../token/ERC1820/ERC1820Implementer.sol";
+import "../interface/ERC1820Implementer.sol";
 
 /**
  * @title Interface that any module contract should implement
@@ -35,7 +34,7 @@ contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, E
         bool isOwner = _caller == Ownable(address(securityToken)).owner();
         bool isFactory = _caller == factory;
         if(!(isOwner || isFactory)){
-            address[] memory controllerList = IERC1400Raw(address(securityToken)).controllers();
+            address[] memory controllerList = IERC1400(address(securityToken)).controllers();
             for (uint i=0; i<controllerList.length; i++) {
                 if(controllerList[i] == msg.sender){
                     return true; //TODO test that this works whether it is a controller on ST.

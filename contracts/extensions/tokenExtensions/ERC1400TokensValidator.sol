@@ -1,46 +1,29 @@
 pragma solidity 0.5.10;
 
-import "../token/ERC1400Raw/IERC1400TokensValidator.sol";
-
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "openzeppelin-solidity/contracts/access/roles/WhitelistedRole.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-import "./rolesSTE/RoleManagement.sol";
+import "./roles/BlacklistedRole.sol";
 
 import "erc1820/contracts/ERC1820Client.sol";
-import "../token/ERC1820/ERC1820Implementer.sol";
+import "../../interface/ERC1820Implementer.sol";
 
-import "../IERC1400.sol";
-import "../token/ERC1400Partition/IERC1400Partition.sol";
-import "../token/ERC1400Raw/IERC1400Raw.sol";
-import "../token/ERC1400Raw/IERC1400TokensSender.sol";
-import "../token/ERC1400Raw/IERC1400TokensRecipient.sol";
-import "../proxy/OwnedUpgradeabilityProxy.sol";
+import "../userExtensions/IERC1400TokensSender.sol";
+import "../userExtensions/IERC1400TokensRecipient.sol";
+
+import "./IERC1400TokensValidator.sol";
 
 
-contract ERC1400TokensValidatorSTE is
-  IERC1400TokensValidator,
-  OwnedUpgradeabilityProxy,
-  Ownable,
-  Pausable,
-  RoleManagement,
-  ERC1820Client,
-  ERC1820Implementer {
+contract ERC1400TokensValidator is IERC1400TokensValidator, Ownable, Pausable, WhitelistedRole, BlacklistedRole, ERC1820Client, ERC1820Implementer {
   using SafeMath for uint256;
-
-  uint256 constant internal MIN = uint256(1);
-  uint256 constant internal MAX = uint256(-1);
 
   string constant internal ERC1400_TOKENS_VALIDATOR = "ERC1400TokensValidator";
 
   bytes4 constant internal ERC20_TRANSFER_FUNCTION_ID = bytes4(keccak256("transfer(address,uint256)"));
   bytes4 constant internal ERC20_TRANSFERFROM_FUNCTION_ID = bytes4(keccak256("transferFrom(address,address,uint256)"));
-  bytes4 constant internal ERC1400_TRANSFERWITHDATA_FUNCTION_ID = bytes4(keccak256("transferWithData(address,uint256,bytes)"));
-  bytes4 constant internal ERC1400_TRANSFERFROMWITHDATA_FUNCTION_ID = bytes4(keccak256("transferFromWithData(address,address,uint256,bytes,bytes)"));
-  bytes4 constant internal ERC1400_TRANSFERBYPARTITION_FUNCTION_ID = bytes4(keccak256("transferByPartition(bytes32,address,uint256,bytes)"));
-  bytes4 constant internal ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID = bytes4(keccak256("operatorTransferByPartition(bytes32,address,address,uint256,bytes,bytes)"));
 
   bool internal _whitelistActivated;
   bool internal _blacklistActivated;
@@ -55,7 +38,7 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
    * @param functionSig ID of the function that is called.
-   * @param partition Name of the partition (left empty for ERC1400Raw transfer).
+   * @param partition Name of the partition (left empty for ERC20 transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
    * @param to Token recipient for a transfer and 0x for a redemption.
@@ -84,7 +67,7 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Function called by the token contract before executing a transfer.
    * @param functionSig ID of the function that is called.
-   * @param partition Name of the partition (left empty for ERC1400Raw transfer).
+   * @param partition Name of the partition (left empty for ERC20 transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
    * @param to Token recipient for a transfer and 0x for a redemption.
@@ -105,7 +88,7 @@ contract ERC1400TokensValidatorSTE is
   ) // Comments to avoid compilation warnings for unused variables.
     external
   {
-    require(_canValidate(functionSig, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
+    require(_canValidate(functionSig, partition, operator, from, to, value, data, operatorData), "55"); // 0x55	funds locked (lockup period)
   }
 
   /**
@@ -140,7 +123,6 @@ contract ERC1400TokensValidatorSTE is
     if(_functionRequiresValidation(functionSig)) {
       if(_whitelistActivated) {
         if(!isWhitelisted(from) || !isWhitelisted(to)) {
-          // Need to check flags and expirys
           return false;
         }
       }
@@ -160,19 +142,12 @@ contract ERC1400TokensValidatorSTE is
    * @return 'true' if the function requires validation, 'false' if not.
    */
   function _functionRequiresValidation(bytes4 functionSig) internal pure returns(bool) {
-  // Here we define specific functions on the ERC1400 contract that require whitelisting of users.
-    if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID)
-          || areEqual(functionSig, ERC20_TRANSFERFROM_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERWITHDATA_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERFROMWITHDATA_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERBYPARTITION_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID))
-    {
+
+    if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID) || areEqual(functionSig, ERC20_TRANSFERFROM_FUNCTION_ID)) {
       return true;
     } else {
       return false;
     }
-  //return true;
   }
 
   /**
@@ -218,5 +193,15 @@ contract ERC1400TokensValidatorSTE is
    */
   function setBlacklistActivated(bool blacklistActivated) external onlyOwner {
     _blacklistActivated = blacklistActivated;
+  }
+
+  /**
+  * @dev kyc whitelist multiple users in a single transaction
+  * @param whitelistedUsers list of whitelisted users
+  */
+  function addWhitelistedMulti(address[] calldata whitelistedUsers) external {
+    for (uint256 i = 0; i < whitelistedUsers.length; i++) {
+        addWhitelisted(whitelistedUsers[i]);
+      }
   }
 }

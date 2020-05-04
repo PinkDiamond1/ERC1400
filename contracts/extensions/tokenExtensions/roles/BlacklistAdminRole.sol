@@ -1,6 +1,7 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/access/Roles.sol";
+
 /**
  * @title BlacklistAdminRole
  * @dev BlacklistAdmins are responsible for assigning and removing Blacklisted accounts.

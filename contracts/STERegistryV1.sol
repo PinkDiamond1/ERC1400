@@ -4,7 +4,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ISTEFactory.sol";
 import "./ISTERegistry.sol";
-import "./token/ERC1400Raw/IERC1400Raw.sol";
+import "./IERC1400.sol";
 import "./storage/EternalStorage.sol";
 import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
@@ -304,7 +304,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         _storeSecurityTokenData(_securityToken, ticker, _deployedAt, _owner);
         // Emit event with Protocol version of 0 for external security tokens.
         emit NewSecurityToken(
-            ticker, IERC1400Raw(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0));
+            ticker, IERC1400(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0));
     }
 
 

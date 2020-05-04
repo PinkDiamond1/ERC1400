@@ -1,8 +1,7 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
 const { shouldFail } = require('openzeppelin-test-helpers');
 
-const ERC1400 = artifacts.require('ERC1400');
-const ERC1400ERC20 = artifacts.require('ERC1400ERC20');
+const ERC1400CertificateMock = artifacts.require('ERC1400CertificateMock');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
@@ -77,7 +76,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
 
       //// Make sure the token works
-      this.token = await ERC1400.at(this.newcontractAddress);
+      this.token = await ERC1400CertificateMock.at(this.newcontractAddress);
       // FOR TOKEN PROPERTIES
       const name = await this.token.name();
       assert.equal(name, thisTokenName);
@@ -165,7 +164,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
           await this.token.transferByPartition(partition1, tokenHolder, approvedAmount, VALID_CERTIFICATE, {from: recipient});
           await this.token.transferWithData(recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode with non controller
-          await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
+          await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
           // Mint even more tokens!
           await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
@@ -231,7 +230,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
     describe('addExistingSecurityTokenToRegistry', function () {
       it('Add Existing Security Token To Registry', async function () {
       const thisTokenTicker = 'DAU2';
-      this.existingSecurityToken = await ERC1400.new('ERC1400Token2', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
+      this.existingSecurityToken = await ERC1400CertificateMock.new('ERC1400Token2', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
 
       //// Call appropriate function
        this.newExistingSecurityToken = await this.steRegistryV1
@@ -251,10 +250,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       });
     });
 
-    describe('addExistingErc20CompatibleSecurityTokenToRegistry', function () {
-      it('Add Existing Security Token ERC1400ERC20 To Registry', async function () {
+    describe('addExistingCompatibleSecurityTokenToRegistry', function () {
+      it('Add Existing Security Token ERC1400 To Registry', async function () {
       const thisTokenTicker = 'DAU3';
-      this.existingSecurityToken = await ERC1400ERC20.new('ERC1400Token3', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
+      this.existingSecurityToken = await ERC1400CertificateMock.new('ERC1400Token3', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
 
       // Existing token can make an issuance
       await this.existingSecurityToken.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, { from: owner });

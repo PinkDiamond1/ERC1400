@@ -2,8 +2,6 @@ pragma solidity 0.5.10;
 
 import "../Module.sol";
 import "../../IERC1400.sol";
-import "../../IERC1400.sol";
-import "../../token/ERC1400Partition/IERC1400Partition.sol";
 
 contract MultipleIssuanceModule is Module {
 
@@ -54,7 +52,7 @@ contract MultipleIssuanceModule is Module {
         require(partitions.length == from.length, "Check array lengths");
         require(partitions.length == values.length, "Check array lengths");
         for (uint i=0; i < partitions.length; i++) {
-            IERC1400Partition(address(securityToken))
+            IERC1400(address(securityToken))
             .operatorTransferByPartition(partitions[i], from[i], to[i], values[i], data, operatorData);
         }
     }

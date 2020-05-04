@@ -1,12 +1,12 @@
 pragma solidity 0.5.10;
 
 import "./ISTEFactory.sol";
-import "./ERC1400.sol";
+import "./mocks/ERC1400CertificateMock.sol";
 
 /**
  * @title Use this STE Factory to deploy instances of the ERC1400 Contract
  */
-contract STEFactory is ISTEFactory { 
+contract STEFactory is ISTEFactory {
 
     // Emit when new contract deployed
     event NewContractDeployed(address _newContract);
@@ -38,13 +38,13 @@ contract STEFactory is ISTEFactory {
         );
 
         // Set the owner of the ERC1400 contract
-        ERC1400(securityToken).transferOwnership(_owner);
-        ERC1400(securityToken).addMinter(_owner); 
+        ERC1400CertificateMock(securityToken).transferOwnership(_owner);
+        ERC1400CertificateMock(securityToken).addMinter(_owner);
         // Could be something else like
         // for (uint j = 0; j<_controllers.length; j++){
         //    ERC1400(securityToken).addMinter(_controllers[j]);
         // }
-        
+
         return securityToken;
     }
 
@@ -58,8 +58,8 @@ contract STEFactory is ISTEFactory {
         bytes32[] memory _defaultPartitions
     ) internal returns(address) {
 
-        // Create the Deployment for Consensys ERC1400
-        ERC1400 contractDeployment = new ERC1400(
+        // Create the Deployment for Consensys ERC1400 (Using certificate mock for now)
+        ERC1400CertificateMock contractDeployment = new ERC1400CertificateMock(
             _name,
             _symbol,
             _granularity,

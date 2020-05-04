@@ -1,6 +1,6 @@
 const { soliditySha3 } = require('web3-utils');
 
-const ERC1400 = artifacts.require('ERC1400');
+const ERC1400CertificateMock = artifacts.require('ERC1400CertificateMock');
 const STEFactory = artifacts.require('STEFactory');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
 
@@ -33,7 +33,7 @@ contract('STEFactory', function ([owner, operator, controller, controller_altern
       let log = this.newToken.logs[0];
       this.newcontractAddress = log.args._newContract;
       // Create a token, a valid test will be able to access the token contract and check that it returns
-      this.token = await ERC1400.at(this.newcontractAddress);
+      this.token = await ERC1400CertificateMock.at(this.newcontractAddress);
     });
     describe('name', function () {
       it('returns the name of the deployed token', async function () {
@@ -61,7 +61,7 @@ contract('STEFactory', function ([owner, operator, controller, controller_altern
     describe('implementer20', function () {
       it('returns the zero address', async function () {
         let interface20Implementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC20_INTERFACE_NAME));
-        assert.equal(interface20Implementer, ZERO_ADDRESS);
+        assert.equal(interface20Implementer, this.token.address);
       });
     });
   });

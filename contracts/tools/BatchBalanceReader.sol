@@ -1,10 +1,11 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-import "../token/ERC1400Partition/IERC1400Partition.sol";
+import "../interface/ERC1820Implementer.sol";
 
-import "../token/ERC1820/ERC1820Implementer.sol";
+import "../IERC1400.sol";
+
 
 /**
  * @title BatchBalanceReader
@@ -40,7 +41,7 @@ contract BatchBalanceReader is ERC1820Implementer {
         for (uint j = 0; j < tokenAddresses.length; j++) {
             for (uint k = 0; k < partitions.length; k++) {
                     index = i * (tokenAddresses.length * partitions.length) + j * partitions.length + k;
-                    balances[index] = IERC1400Partition(tokenAddresses[j]).balanceOfByPartition(partitions[k], tokenHolders[i]);
+                    balances[index] = IERC1400(tokenAddresses[j]).balanceOfByPartition(partitions[k], tokenHolders[i]);
             }
         }
     }

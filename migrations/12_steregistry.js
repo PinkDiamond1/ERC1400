@@ -27,12 +27,12 @@ module.exports = async function (deployer, network, accounts) {
 
 */
 
-  // Set up the STE Registry
-  //
-  // await deployer.deploy(STERegistryV1, '0x1DD521f0Af3b33729CaC8298fe1802950fa47ee0', 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
-  // const registryInstance = await STERegistryV1.deployed();
-  // console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
-  //
+//  Set up the STE Registry
+
+  await deployer.deploy(STERegistryV1, '0x1DD521f0Af3b33729CaC8298fe1802950fa47ee0', 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
+  const registryInstance = await STERegistryV1.deployed();
+  console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
+
 
 
   // Set up the simple token extension
