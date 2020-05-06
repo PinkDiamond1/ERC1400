@@ -32,7 +32,7 @@ const approvedAmount = 50000;
 const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 150;
 
 
-contract('STERegistryV1', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
+contract('MultipleIssuanceModule', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
   before(async function () {
     this.registry = await ERC1820Registry.at('0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24');
   });
