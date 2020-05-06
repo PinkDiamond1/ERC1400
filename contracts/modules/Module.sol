@@ -34,13 +34,16 @@ contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, E
         bool isOwner = _caller == Ownable(address(securityToken)).owner();
         bool isFactory = _caller == factory;
         if(!(isOwner || isFactory)){
-            address[] memory controllerList = IERC1400(address(securityToken)).controllers();
-            for (uint i=0; i<controllerList.length; i++) {
-                if(controllerList[i] == msg.sender){
-                    return true; //TODO test that this works whether it is a controller on ST.
-                }
-            }
-            return false;
+            return IERC1400(address(securityToken)).isOperator(_caller, address(0));
+        }
+        return isOwner || isFactory;
+    }
+
+    function _checkControllerPermissionByPartition( bytes32 partition,address _caller, address _tokenHolder) internal view returns (bool) {
+        bool isOwner = _caller == Ownable(address(securityToken)).owner();
+        bool isFactory = _caller == factory;
+        if(!(isOwner || isFactory)){
+            return IERC1400(address(securityToken)).isOperatorForPartition(partition, _caller, _tokenHolder);
         }
         return isOwner || isFactory;
     }

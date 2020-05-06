@@ -49,6 +49,7 @@ contract MultipleIssuanceModule is Module {
         require(partitions.length == tokenHolders.length, "Check array lengths");
         require(partitions.length == values.length, "Check array lengths");
         for (uint i=0; i < partitions.length; i++) {
+            require(_checkControllerPermissionByPartition(partitions[i], msg.sender, tokenHolders[i]));
             IERC1400(address(securityToken))
             .issueByPartition(partitions[i], tokenHolders[i], values[i], data);
         }

@@ -8,10 +8,6 @@ interface IERC1400 /*is IERC20*/ { // Interfaces can currently not inherit inter
 
   // ****************** Token Information **********************
     function name() external view returns(string memory);
-    function symbol() external view returns(string memory);
-    function decimals() external pure returns(uint8);
-    function granularity() external view returns(uint256);
-    function totalPartitions() external view returns (bytes32[] memory);
 
   // ****************** Document Management *******************
   function getDocument(bytes32 name) external view returns (string memory, bytes32);
@@ -33,8 +29,6 @@ interface IERC1400 /*is IERC20*/ { // Interfaces can currently not inherit inter
   function isControllable() external view returns (bool);
   // function controllerTransfer(address from, address to, uint256 value, bytes calldata data, bytes calldata operatorData) external; // removed because same action can be achieved with "operatorTransferByPartition"
   // function controllerRedeem(address tokenHolder, uint256 value, bytes calldata data, bytes calldata operatorData) external; // removed because same action can be achieved with "operatorRedeemByPartition"
-    function controllers() external view returns (address[] memory);
-    function controllersByPartition(bytes32 partition) external view returns (address[] memory);
 
   // ****************** Operator Management *******************
   function authorizeOperator(address operator) external;
