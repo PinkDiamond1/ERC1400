@@ -23,13 +23,16 @@ const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 const partition1 = '0x5265736572766564000000000000000000000000000000000000000000000000'; // Reserved in hex
 const partition2 = '0x4973737565640000000000000000000000000000000000000000000000000000'; // Issued in hex
 const partition3 = '0x4c6f636b65640000000000000000000000000000000000000000000000000000'; // Locked in hex
+
+const defaultExemption = '0x1234500000000000000000000000000000000000000000000000000000000000';
+
 const ZERO_BYTE = '0x';
 const partitions = [partition1, partition2, partition3];
 
 const issuanceAmount = 100000;
 const approvedAmount = 50000;
 
-const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 150;
+const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 20;
 
 
 contract('MultipleIssuanceModule', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
@@ -98,19 +101,22 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
           this.issuancePartitions = [];
           this.tokenHolders = [];
           this.values = [];
+          this.exemptions = [];
+
           for(let index=0; index < MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH; index++) {
 
               this.issuancePartitions.push(partition1);
               this.tokenHolders.push(tokenHolder);
               this.values.push(index);
+              this.exemptions.push(defaultExemption);
           }
           // Issue multiple owner for max amount of times
-          await this.multiIssuanceModule.issueByPartitionMultiple(this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: owner});
+          await this.multiIssuanceModule.issueByPartitionMultiple(this.exemptions, this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: owner});
 
          // Issue multiple controller
-         await this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
+         await this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
           // Issue multiple from random does not work
-          await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
+          await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
 
           // Force transfer multiple owner
           await this.multiIssuanceModule.operatorTransferByPartitionMultiple(

@@ -1,13 +1,16 @@
 pragma solidity 0.5.10;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../Module.sol";
 import "../../IERC1400.sol";
 
 contract MultipleIssuanceModule is Module {
+    using SafeMath for uint256;
 
     string constant internal ERC1400_MULTIPLE_ISSUANCE = "ERC1400MultipleIssuance";
 
     struct Exemption {
+        bool hasBeenAdded;
         uint256 index;
         uint256 totalBalanceIssuedUnderExemption;
         mapping(bytes32 => ExemptionByPartition) exemptionMapByPartition;
@@ -15,11 +18,11 @@ contract MultipleIssuanceModule is Module {
 
     struct ExemptionByPartition {
         uint256 totalPartitionedBalanceIssuedUnderExemption;
-        mapping(address => uint256) totalPartitionBalanceByTokenHolderIssuedUnderExemption;
+        mapping(address => uint256) totalPartitionBalanceByTokenHolder;
     }
 
     // Array of exemptions
-    bytes32[] internal _exemptions;
+    bytes32[] public exemptionList;
     mapping(bytes32 => Exemption) public transactionIndexesToSender;
 
     /**
@@ -39,7 +42,25 @@ contract MultipleIssuanceModule is Module {
         return bytes4(0);
     }
 
-    function issueByPartitionMultiple(bytes32[] calldata partitions,
+    function _changeExemptionBalances(bytes32 exemption, bytes32 partition, address tokenHolder, uint256 value) internal {
+        // Check if the exemption exists, if not add it
+        if(!transactionIndexesToSender[exemption].hasBeenAdded){
+            transactionIndexesToSender[exemption].index = exemptionList.push(exemption).sub(1);
+            transactionIndexesToSender[exemption].hasBeenAdded = true;
+        }
+        // Update total under exemption
+        transactionIndexesToSender[exemption].totalBalanceIssuedUnderExemption += value;
+
+        // Update total under exemption for partition
+        transactionIndexesToSender[exemption].exemptionMapByPartition[partition]
+            .totalPartitionedBalanceIssuedUnderExemption += value;
+
+        // Update total under exemption for partition by tokenHolder
+        transactionIndexesToSender[exemption].exemptionMapByPartition[partition]
+        .totalPartitionBalanceByTokenHolder[tokenHolder] += value;
+    }
+
+    function issueByPartitionMultiple(bytes32[] calldata exemptions, bytes32[] calldata partitions,
         address[] calldata tokenHolders,
         uint256[] calldata values,
         bytes calldata data)
@@ -52,6 +73,7 @@ contract MultipleIssuanceModule is Module {
             require(_checkControllerPermissionByPartition(partitions[i], msg.sender, tokenHolders[i]));
             IERC1400(address(securityToken))
             .issueByPartition(partitions[i], tokenHolders[i], values[i], data);
+            _changeExemptionBalances(exemptions[i], partitions[i], tokenHolders[i], values[i]);
         }
     }
 
