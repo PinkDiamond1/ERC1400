@@ -25,6 +25,8 @@ const partition2 = '0x4973737565640000000000000000000000000000000000000000000000
 const partition3 = '0x4c6f636b65640000000000000000000000000000000000000000000000000000'; // Locked in hex
 
 const defaultExemption = '0x1234500000000000000000000000000000000000000000000000000000000000';
+const exemption2 = '0x1234560000000000000000000000000000000000000000000000000000000000';
+const exemption3 = '0x1234567000000000000000000000000000000000000000000000000000000000';
 
 const ZERO_BYTE = '0x';
 const partitions = [partition1, partition2, partition3];
@@ -96,58 +98,93 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
             {from: owner});
     });
 
-    describe('multiple issuance module', function () {
-      it('runs a valid integration test scenario for multiple issuance', async function () {
-          this.issuancePartitions = [];
-          this.tokenHolders = [];
-          this.values = [];
-          this.exemptions = [];
+      describe('multiple issuance module', function () {
+          it('runs a valid integration test scenario for multiple issuance', async function () {
+              this.issuancePartitions = [];
+              this.tokenHolders = [];
+              this.values = [];
+              this.exemptions = [];
 
-          for(let index=0; index < MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH; index++) {
+              for(let index=0; index < MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH; index++) {
 
-              this.issuancePartitions.push(partition1);
-              this.tokenHolders.push(tokenHolder);
-              this.values.push(index);
-              this.exemptions.push(defaultExemption);
-          }
-          // Issue multiple owner for max amount of times
-          await this.multiIssuanceModule.issueByPartitionMultiple(this.exemptions, this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: owner});
+                  this.issuancePartitions.push(partition1);
+                  this.tokenHolders.push(tokenHolder);
+                  this.values.push(index);
+                  this.exemptions.push(defaultExemption);
+              }
+              // Issue multiple owner for max amount of times
+              await this.multiIssuanceModule.issueByPartitionMultiple(this.exemptions, this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: owner});
 
-         // Issue multiple controller
-         await this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
-          // Issue multiple from random does not work
-          await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
+              // Issue multiple controller
+              await this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
+              // Issue multiple from random does not work
+              await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
 
-          // Force transfer multiple owner
-          await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
-              [partition1, partition1],
-              [recipient, tokenHolder],
-              [randomTokenHolder, randomTokenHolder],
-              [1, 1],
-              ZERO_BYTE,
-              VALID_CERTIFICATE,
-              {from: owner});
+              // Force transfer multiple owner
+              await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+                  [partition1, partition1],
+                  [recipient, tokenHolder],
+                  [randomTokenHolder, randomTokenHolder],
+                  [1, 1],
+                  ZERO_BYTE,
+                  VALID_CERTIFICATE,
+                  {from: owner});
 
-          // Force transfer multiple controller
-          await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
-              [partition1, partition1],
-              [recipient, tokenHolder],
-              [randomTokenHolder, randomTokenHolder],
-              [1, 1],
-              ZERO_BYTE,
-              VALID_CERTIFICATE,
-              {from: controller});
+              // Force transfer multiple controller
+              await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+                  [partition1, partition1],
+                  [recipient, tokenHolder],
+                  [randomTokenHolder, randomTokenHolder],
+                  [1, 1],
+                  ZERO_BYTE,
+                  VALID_CERTIFICATE,
+                  {from: controller});
 
-          // Force transfer multiple from unknown does not work
-          await shouldFail.reverting(this.multiIssuanceModule.operatorTransferByPartitionMultiple(
-              [partition1, partition1],
-              [recipient, tokenHolder],
-              [randomTokenHolder, randomTokenHolder],
-              [issuanceAmount, issuanceAmount],
-              ZERO_BYTE,
-              VALID_CERTIFICATE,
-              {from: unknown}));
+              // Force transfer multiple from unknown does not work
+              await shouldFail.reverting(this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+                  [partition1, partition1],
+                  [recipient, tokenHolder],
+                  [randomTokenHolder, randomTokenHolder],
+                  [issuanceAmount, issuanceAmount],
+                  ZERO_BYTE,
+                  VALID_CERTIFICATE,
+                  {from: unknown}));
+          });
       });
-    });
+      
+      describe('multiple issuance module', function () {
+          it('returns appropriate exemptions balances', async function () {
+              this.issuancePartitions = [partition1, partition1, partition2, partition3];
+              this.tokenHolders = [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2];
+              this.values = [100, 100, 300, 400];
+              this.exemptions = [defaultExemption, defaultExemption, exemption2, exemption3];
+
+              // Issue multiple by controller
+              await this.multiIssuanceModule.issueByPartitionMultiple(this.exemptions, this.issuancePartitions, this.tokenHolders, this.values, VALID_CERTIFICATE, {from: controller});
+
+              const totalIssuedUnderDefaultExemption = await this.multiIssuanceModule.totalIssuedUnderExemption(defaultExemption);
+              const totalIssuedUnderExemption2 = await this.multiIssuanceModule.totalIssuedUnderExemption(exemption2);
+              const totalIssuedUnderExemption3 = await this.multiIssuanceModule.totalIssuedUnderExemption(exemption3);
+              assert.equal(totalIssuedUnderDefaultExemption, this.values[0]+this.values[1]);
+              assert.equal(totalIssuedUnderExemption2, this.values[2]);
+              assert.equal(totalIssuedUnderExemption3, this.values[3]);
+
+              const totalIssuedUnderDefaultExemptionPartition1 = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartition(defaultExemption, partition1);
+              const totalIssuedUnderExemption2Partition2 = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartition(exemption2, partition2);
+              const totalIssuedUnderExemption3Partition3 = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartition(exemption3, partition3);
+              assert.equal(totalIssuedUnderDefaultExemptionPartition1, this.values[0]+this.values[1]);
+              assert.equal(totalIssuedUnderExemption2Partition2, this.values[2]);
+              assert.equal(totalIssuedUnderExemption3Partition3, this.values[3]);
+
+              const totalIssuedUnderDefaultExemptionPartition1ToTokenHolder = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartitionAndTokenHolder(defaultExemption, partition1, tokenHolder);
+              const totalIssuedUnderDefaultExemptionPartition1ToRecipient = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartitionAndTokenHolder(defaultExemption, partition1, recipient);
+              const totalIssuedUnderExemption2Partition2ToRandomTokenHolder = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartitionAndTokenHolder(exemption2, partition2, randomTokenHolder);
+              const totalIssuedUnderExemption3Partition3ToRandomTokenHolder2 = await this.multiIssuanceModule.totalIssuedUnderExemptionByPartitionAndTokenHolder(exemption3, partition3, randomTokenHolder2);
+              assert.equal(totalIssuedUnderDefaultExemptionPartition1ToTokenHolder, this.values[0]);
+              assert.equal(totalIssuedUnderDefaultExemptionPartition1ToRecipient, this.values[1]);
+              assert.equal(totalIssuedUnderExemption2Partition2ToRandomTokenHolder, this.values[2]);
+              assert.equal(totalIssuedUnderExemption3Partition3ToRandomTokenHolder2, this.values[3]);
+          });
+      });
   });
 });

@@ -60,6 +60,23 @@ contract MultipleIssuanceModule is Module {
         .totalPartitionBalanceByTokenHolder[tokenHolder] += value;
     }
 
+    // Get total tokens issued under an exemption
+    function totalIssuedUnderExemption(bytes32 exemption) external view returns (uint256 totalTokens){
+        return transactionIndexesToSender[exemption].totalBalanceIssuedUnderExemption;
+    }
+
+    // Get total tokens issued under an exemption by partition
+    function totalIssuedUnderExemptionByPartition(bytes32 exemption, bytes32 partition) external view returns (uint256 totalTokens){
+        return transactionIndexesToSender[exemption].exemptionMapByPartition[partition]
+        .totalPartitionedBalanceIssuedUnderExemption;
+    }
+
+    // Get total tokens issued under an exemption by partition and token holder
+    function totalIssuedUnderExemptionByPartitionAndTokenHolder(bytes32 exemption, bytes32 partition, address tokenHolder) external view returns (uint256 totalTokens){
+        return transactionIndexesToSender[exemption].exemptionMapByPartition[partition]
+        .totalPartitionBalanceByTokenHolder[tokenHolder];
+    }
+
     function issueByPartitionMultiple(bytes32[] calldata exemptions, bytes32[] calldata partitions,
         address[] calldata tokenHolders,
         uint256[] calldata values,
