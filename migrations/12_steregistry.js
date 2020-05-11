@@ -13,28 +13,17 @@ const partition3 = '0x4c6f636b65640000000000000000000000000000000000000000000000
 const partitions = [partition1, partition2, partition3];
 
 module.exports = async function (deployer, network, accounts) {
-
-
-  // await deployer.deploy(ERC1400, 'ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions);
-
-  // console.log('\n   > Token extension deployment: Success -->', ERC1400.address);
-
   // Set up the STE Factory
-/*
-  await deployer.deploy(STEFactory, 'v1');
   const factoryInstance = await STEFactory.deployed();
   console.log('\n   > ERC1400 factory deployment: Success -->', STEFactory.address);
 
-*/
 
-//  Set up the STE Registry
-
-  await deployer.deploy(STERegistryV1, '0x1DD521f0Af3b33729CaC8298fe1802950fa47ee0', 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
+  //  Set up the STE Registry
+  await deployer.deploy(STERegistryV1, STEFactory.address, 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
   const registryInstance = await STERegistryV1.deployed();
   console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
 
-
-
+  
   // Set up the simple token extension
 /*
   await deployer.deploy(Extension, true, false);

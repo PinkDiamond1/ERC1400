@@ -53,7 +53,16 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
         const thisTokenName = 'ERC1400Token';
 
         this.newSecurityToken = await this.steRegistryV1
-            .generateNewSecurityToken(thisTokenName, thisTokenTicker, 1, [controller], controller, true, partitions, owner, 0);
+            .generateNewSecurityToken(
+                thisTokenName,
+                thisTokenTicker,
+                1,
+                [controller],
+                // controller,
+                // true,
+                partitions,
+                owner,
+                0);
         let log = this.newSecurityToken.logs[2];
         this.newcontractAddress = log.args._securityTokenAddress;
 

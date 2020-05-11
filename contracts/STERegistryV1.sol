@@ -193,8 +193,6 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
      * @param _ticker is the ticker symbol of the security token
      * @param _granularity is the number of granularity of the Security Token
      * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
-     * @param _certificateSigner Valid Eth address which can sign certificates while that feature is active
-     * @param _certificateActivated Whether to activate the certificates feature
      * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
      * @param _protocolVersion Version of securityToken contract
      * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
@@ -205,8 +203,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         string memory _ticker,
         uint8 _granularity,
         address[] memory _controllers,
-        address _certificateSigner,
-        bool _certificateActivated,
+       // address _certificateSigner,
+        // bool _certificateActivated,
         bytes32[] memory _defaultPartitions,
         address _owner,
         uint256 _protocolVersion
@@ -226,7 +224,16 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         set(statusKey, true);
 
         address newSecurityTokenAddress =
-            _deployToken(_name, _ticker, _granularity, _controllers, _certificateSigner, _certificateActivated, _defaultPartitions, _owner, _protocolVersion);
+            _deployToken(
+                _name,
+                    _ticker,
+                    _granularity,
+                    _controllers,
+                    // _certificateSigner,
+                    // _certificateActivated,
+                    _defaultPartitions,
+                    _owner,
+                    _protocolVersion);
         // Example to use protocol version to make other logic.
         // if (_protocolVersion == VersionUtils.pack(2, 0, 0)) {
          emit NewSecurityToken(
@@ -240,8 +247,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         string memory _ticker,
         uint8 _granularity,
         address[] memory _controllers,
-        address _certificateSigner,
-        bool _certificateActivated,
+        // address _certificateSigner,
+        // bool _certificateActivated,
         bytes32[] memory _defaultPartitions,
         address _owner,
         uint256 _protocolVersion
@@ -259,8 +266,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _ticker,
             _granularity,
             _controllers,
-            _certificateSigner,
-            _certificateActivated,
+            // _certificateSigner,
+            // _certificateActivated,
             _defaultPartitions,
             _owner
         );

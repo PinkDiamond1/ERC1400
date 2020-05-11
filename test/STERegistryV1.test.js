@@ -17,9 +17,9 @@ const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-const VALID_CERTIFICATE = '0x1000000000000000000000000000000000000000000000000000000000000000';
+ const VALID_CERTIFICATE = '0x1000000000000000000000000000000000000000000000000000000000000000';
 
-const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
+ const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 
 const partition1 = '0x5265736572766564000000000000000000000000000000000000000000000000'; // Reserved in hex
 const partition2 = '0x4973737565640000000000000000000000000000000000000000000000000000'; // Issued in hex
@@ -64,7 +64,16 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       assert.isTrue(isTickerCurrentlyRegistered);
 
       this.newSecurityToken = await this.steRegistryV1
-      .generateNewSecurityToken(thisTokenName, thisTokenTicker, 1, [controller], controller, true, partitions, owner, 0);
+      .generateNewSecurityToken(
+          thisTokenName,
+          thisTokenTicker,
+          1,
+          [controller],
+          //controller,
+          //true,
+          partitions,
+          owner,
+          0);
 
       let log = this.newSecurityToken.logs[2];
       this.newcontractAddress = log.args._securityTokenAddress;
@@ -228,12 +237,21 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const thisTokenTicker = 'DAUUUUUUUUUU';
       const thisTokenName = 'ERC1400Token';
         await shouldFail.reverting(this.steRegistryV1
-      .generateNewSecurityToken(thisTokenName, thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0))
+      .generateNewSecurityToken(
+          thisTokenName,
+          thisTokenTicker,
+          1,
+          [controller],
+         // CERTIFICATE_SIGNER,
+         // true,
+          partitions,
+          owner,
+          0))
       });
     });
 
     describe('addExistingSecurityTokenToRegistry', function () {
-      it('Add Existing Security Token To Registry', async function () {
+      it('Add Existing Security Token To Registry with certificate controller feature', async function () {
       const thisTokenTicker = 'DAU2';
       this.existingSecurityToken = await ERC1400CertificateMock.new('ERC1400Token2', thisTokenTicker, 1, [controller], CERTIFICATE_SIGNER, true, partitions);
 
@@ -287,7 +305,16 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
         this.thisTokenName5 = 'ERC1400Token5';
 
         this.newSecurityToken = await this.steRegistryV1
-        .generateNewSecurityToken(this.thisTokenName5, this.thisTokenTicker5 , 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0);
+        .generateNewSecurityToken(
+            this.thisTokenName5,
+            this.thisTokenTicker5,
+            1,
+            [controller],
+            // CERTIFICATE_SIGNER,
+            // true,
+            partitions,
+            owner,
+            0);
         let log = this.newSecurityToken.logs[2];
         this.newcontractAddress5 = log.args._securityTokenAddress;
 
@@ -299,7 +326,16 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
         // Make a second token
         this.thisTokenTicker6 = 'DAU6';
         this.newSecurityToken = await this.steRegistryV1
-        .generateNewSecurityToken('ERC1400Token6', this.thisTokenTicker6 , 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner, 0);
+        .generateNewSecurityToken(
+            'ERC1400Token6',
+            this.thisTokenTicker6 ,
+            1,
+            [controller],
+            // CERTIFICATE_SIGNER,
+            // true,
+            partitions,
+            owner,
+            0);
         let log = this.newSecurityToken.logs[2];
         this.newcontractAddress6 = log.args._securityTokenAddress;
 

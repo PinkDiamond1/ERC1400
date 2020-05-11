@@ -13,8 +13,8 @@ const partitions = [partition1, partition2, partition3];
 
 module.exports = async function (deployer, network, accounts) {
 
-  // await deployer.deploy(STEFactory, 'v1');
-  // const factoryInstance = await STEFactory.deployed();
-  // console.log('\n   > ERC1400 factory deployment: Success -->', STEFactory.address);
+   await deployer.deploy(STEFactory, 'v1');
+   const factoryInstance = await STEFactory.deployed();
+   console.log('\n   > ERC1400 factory deployment: Success -->', STEFactory.address);
 
 };
