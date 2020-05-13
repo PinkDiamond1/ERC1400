@@ -46,8 +46,13 @@ contract RoleManagement is AdminRole {
     Roles.Role private _eligibleInvestors; // 4
     Roles.Role private _dealerAdvisedInvestors; // 5
 
+    constructor(address owner) public
+    AdminRole(owner)
+    {
+    }
+
     function getBoolean(uint256 _packedBools, uint256 _boolNumber)
-    public view returns(bool)
+    public pure returns(bool)
     {
         uint256 flag = (_packedBools >> _boolNumber) & ONE;
         return (flag == 1 ? true : false);

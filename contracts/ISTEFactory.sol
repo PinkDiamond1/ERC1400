@@ -24,7 +24,9 @@ interface ISTEFactory {
         // address _certificateSigner,
         // bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
-        address _owner
+        address _owner,
+        bytes32[] calldata hookContractNames,
+        address[] calldata deployedModules
     )
     external
     returns(address tokenAddress);

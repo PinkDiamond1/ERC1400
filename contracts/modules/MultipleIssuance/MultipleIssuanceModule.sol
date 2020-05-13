@@ -3,8 +3,9 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../Module.sol";
 import "../../IERC1400.sol";
+import "./IMultipleIssuanceModule.sol";
 
-contract MultipleIssuanceModule is Module {
+contract MultipleIssuanceModule is Module, IMultipleIssuanceModule {
     using SafeMath for uint256;
 
     string constant internal ERC1400_MULTIPLE_ISSUANCE = "ERC1400MultipleIssuance";
@@ -27,10 +28,10 @@ contract MultipleIssuanceModule is Module {
 
     /**
      * @notice Constructor
-     * @param _securityToken Address of the security token
+     * @param factory Address of the factory or admin
      */
-    constructor (address _securityToken) public
-    Module(_securityToken)
+    constructor(address factory) public
+    Module(factory)
     {
         ERC1820Implementer._setInterface(ERC1400_MULTIPLE_ISSUANCE);
     }
@@ -39,7 +40,19 @@ contract MultipleIssuanceModule is Module {
     * @notice This function returns the signature of configure function
     */
     function getInitFunction() public pure returns (bytes4) {
-        return bytes4(0);
+        return this.configure.selector;
+    }
+
+    /**
+    * @notice Function used to initialize the contract variables
+    */
+    function configure(
+        address _securityToken
+    )
+    external
+    onlyFactory
+    {
+        securityToken = _securityToken;
     }
 
     function _changeExemptionBalances(bytes32 exemption, bytes32 partition, address tokenHolder, uint256 value) internal {

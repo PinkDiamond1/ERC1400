@@ -11,7 +11,9 @@ import "./libraries/Encoder.sol";
 import "./libraries/VersionUtils.sol";
 import "./libraries/DecimalMath.sol";
 import "./libraries/IOwnable.sol";
+import "./modules/IModulesDeployer.sol";
 import "./proxy/OwnedUpgradeabilityProxy.sol";
+import "./modules/MultipleIssuance/IMultipleIssuanceModule.sol";
 
 /**
  * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400 tokens from the STEFactory
@@ -60,9 +62,9 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     bytes32 constant LATEST_VERSION = 0x4c63b69b9117452b9f11af62077d0cda875fb4e2dbe07ad6f31f728de6926230; //keccak256("latestVersion")
     bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")
     bytes32 constant PAUSED = 0xee35723ac350a69d2a92d3703f17439cbaadf2f093a21ba5bf5f1a53eb2a14d9; //keccak256("paused")
+    bytes32 constant MODULE_DEPLOYER = 0xa2392d41e64eb031ce614d0fe6a6d6e38ffb12e97e0d9f0e9a60d298ef9c35c7; //keccak256("moduleDeployer")
     bytes32 constant STRGETTER = 0x982f24b3bd80807ec3cb227ba152e15c07d66855fa8ae6ca536e689205c0e2e9; //keccak256("STRGetter")
     bytes32 constant ACTIVE_USERS = 0x425619ce6ba8e9f80f17c0ef298b6557e321d70d7aeff2e74dd157bd87177a9e; //keccak256("activeUsers")
-
 
     // Emit when network becomes paused
     event Pause(address account);
@@ -88,7 +90,6 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 _protocolVersion
     );
 
-
     // Emit when registering a new ticker
     event RegisterTicker(
         address indexed _owner,
@@ -96,6 +97,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         uint256 indexed _registrationDate,
         bool _fromAdmin
     );
+
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
     event ProtocolFactoryRemoved(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
@@ -156,8 +158,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     /////////////////////////////
 
     // Constructor
-    constructor(address _steFactoryAddress, uint8 _major, uint8 _minor, uint8 _patch) public {
-        initialize(_steFactoryAddress, _major, _minor, _patch);
+    constructor(address _steFactoryAddress, address modulesDeployer, uint8 _major, uint8 _minor, uint8 _patch) public {
+        initialize(_steFactoryAddress, modulesDeployer, _major, _minor, _patch);
     }
 
     /**
@@ -169,6 +171,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
      */
     function initialize(
         address _steFactoryAddress,
+        address _modulesDeployer,
         uint8 _major,
         uint8 _minor,
         uint8 _patch
@@ -181,6 +184,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             "Invalid address"
         );
         set(PAUSED, false);
+        set(MODULE_DEPLOYER, _modulesDeployer);
         set(OWNER, msg.sender);
         setProtocolFactory(_steFactoryAddress, _major, _minor, _patch);
         setLatestVersion(_major, _minor, _patch);
@@ -256,10 +260,21 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         internal
         returns(address securityTokenAddress)
     {
-        uint8[] memory upperLimit = new uint8[](3);
-        upperLimit[0] = 2;
-        upperLimit[1] = 99;
-        upperLimit[2] = 99;
+        // Useful for doing different operations
+//        uint8[] memory upperLimit = new uint8[](3);
+//        upperLimit[0] = 9;
+//        upperLimit[1] = 99;
+//        upperLimit[2] = 99;
+//        if (VersionUtils.lessThanOrEqual(VersionUtils.unpack(uint24(_protocolVersion)), upperLimit)) {
+//            // Do something
+//        }
+        bytes32[] memory hookContractNames = new bytes32[](3);
+        hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
+        hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
+        hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
+
+        address[] memory deployedModules = IModulesDeployer(getAddressValue(MODULE_DEPLOYER)).deployMultipleModulesFromFactories(
+            hookContractNames, 0, 0, 0);
 
         address newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
             _name,
@@ -269,14 +284,28 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             // _certificateSigner,
             // _certificateActivated,
             _defaultPartitions,
-            _owner
+            _owner,
+            hookContractNames,
+            deployedModules
         );
+
+        IMultipleIssuanceModule(deployedModules[0]).configure(newSecurityTokenAddress);
 
         /*solium-disable-next-line security/no-block-members*/
         _setTickerOwnership(_owner, _ticker);
         _storeSecurityTokenData(newSecurityTokenAddress, _ticker, now, _owner);
         set(Encoder.getKey("tickerToSecurityToken", _ticker), newSecurityTokenAddress);
         return newSecurityTokenAddress;
+    }
+
+    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+        bytes memory tempEmptyStringTest = bytes(source);
+        if (tempEmptyStringTest.length == 0) {
+            return 0x0;
+        }
+        assembly {
+            result := mload(add(source, 32))
+        }
     }
 
     /**
@@ -663,6 +692,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     }
 
     /**
+    * @dev Set the module that will deploy
+    * @param _newModuleDeployer The address to use for module deployment
+    */
+    function setModuleDeployer(address _newModuleDeployer) public onlyOwner {
+        set(MODULE_DEPLOYER, _newModuleDeployer);
+    }
+    /**
     * @notice Called by the owner to pause, triggers stopped state
     */
     function pause() external whenNotPaused onlyOwner {
@@ -706,5 +742,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
      */
     function owner() public view returns(address) {
         return getAddressValue(OWNER);
+    }
+
+    /**
+     * @notice Gets the module deployer
+     * @return address moduleDeployer
+     */
+    function moduleDeployer() public view returns(address) {
+        return getAddressValue(MODULE_DEPLOYER);
     }
 }

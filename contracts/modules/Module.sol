@@ -17,10 +17,10 @@ import "../interface/ERC1820Implementer.sol";
 contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, ERC1820Implementer {
     /**
      * @notice Constructor
-     * @param _securityToken Address of the security token
+     * @param factory Address of the factory or admin creating
      */
-    constructor (address _securityToken) public
-    ModuleStorage(_securityToken)
+    constructor (address factory) public
+    ModuleStorage(factory)
     {
     }
 

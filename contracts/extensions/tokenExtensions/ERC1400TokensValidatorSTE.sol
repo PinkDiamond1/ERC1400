@@ -43,7 +43,9 @@ contract ERC1400TokensValidatorSTE is
   bool internal _whitelistActivated;
   bool internal _blacklistActivated;
 
-  constructor(bool whitelistActivated, bool blacklistActivated) public {
+  constructor(bool whitelistActivated, bool blacklistActivated, address owner) public
+  RoleManagement(owner)
+  {
     ERC1820Implementer._setInterface(ERC1400_TOKENS_VALIDATOR);
 
     _whitelistActivated = whitelistActivated;

@@ -7,15 +7,15 @@ import "../EternalStorage.sol";
  */
 contract ModuleStorage {
     address public factory;
-    IERC1400 public securityToken;
+    address public securityToken;
 
     /**
      * @notice Constructor
-     * @param _securityToken Address of the security token
+     * @param _factory Address of the factory or admin
      */
-    constructor(address _securityToken) public {
-        securityToken = IERC1400(_securityToken);
-        factory = msg.sender;
+    constructor(address _factory) public {
+        factory = _factory;
+        securityToken = address(0);
     }
 
 }
