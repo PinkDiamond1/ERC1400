@@ -6,7 +6,7 @@ pragma solidity 0.5.10;
 interface IModuleFactory {
 
     // Emit when new contract deployed
-    event ModuleDeployed(address _newContract, address admin);
+    event ModuleDeployed(address _newContract, address _admin);
 
     /**
      * @notice Deploys the token extension

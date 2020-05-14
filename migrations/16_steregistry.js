@@ -3,6 +3,7 @@ const STEFactory = artifacts.require('./STEFactory.sol');
 const Extension = artifacts.require('./ERC1400TokensValidatorSTE.sol');
 const TokensChecker = artifacts.require('./ERC1400TokensChecker.sol');
 const ERC1400 = artifacts.require('./ERC1400.sol');
+const ModulesDeployer = artifacts.require('./ModulesDeployer.sol');
 
 const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 const controller = '0xb5747835141b46f7C472393B31F8F5A57F74A44f';
@@ -15,29 +16,11 @@ const partitions = [partition1, partition2, partition3];
 module.exports = async function (deployer, network, accounts) {
   // Set up the STE Factory
   const factoryInstance = await STEFactory.deployed();
+  const modulesDeployerInstance = await ModulesDeployer.deployed();
   console.log('\n   > ERC1400 factory deployment: Success -->', STEFactory.address);
 
-
   //  Set up the STE Registry
-  await deployer.deploy(STERegistryV1, STEFactory.address, 0, 0, 1); // Address is already existing ST Factory, or you can deploy new one above
+  await deployer.deploy(STERegistryV1, factoryInstance.address, modulesDeployerInstance.address, '0', '0', '1'); // Address is already existing ST Factory, or you can deploy new one above
   const registryInstance = await STERegistryV1.deployed();
   console.log('\n   > STE Registry deployment: Success -->', STERegistryV1.address);
-
-  
-  // Set up the simple token extension
-/*
-  await deployer.deploy(Extension, true, false);
-  console.log('\n   > Token extension deployment: Success -->', Extension.address);
-  const extensionInstance = await Extension.deployed();
-  await extensionInstance.addWhitelisted(accounts[0]);
-*/
-/*
-  // Set up a tokens checker
-  await deployer.deploy(TokensChecker);
-  console.log('\n   > Token checker deployment: Success -->', TokensChecker.address);
-  const checkerInstance = await TokensChecker.deployed();
-
-*/
-  // const newToken2 = await factoryInstance.deployToken('ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions, controller);
-  // console.log('\n   > Token deployed: Transaction Success, did not revert');
 };

@@ -15,18 +15,20 @@ interface ISTEFactory {
      * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
      * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
      * @param _owner New Owner
+     * @param _owner New Owner
+     * @param _owner New Owner
      */
     function deployToken(
         string calldata _name,
         string calldata _symbol,
         uint8 _granularity,
         address[] calldata _controllers,
-        // address _certificateSigner,
-        // bool _certificateActivated,
+    //address _certificateSigner,
+    // bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
         address _owner,
-        bytes32[] calldata hookContractNames,
-        address[] calldata deployedModules
+        bytes32[] calldata _hookContractNames,
+        address[] calldata _hookContracts
     )
     external
     returns(address tokenAddress);

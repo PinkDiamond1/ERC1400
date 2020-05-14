@@ -229,7 +229,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
 
         address newSecurityTokenAddress =
             _deployToken(
-                _name,
+                    _name,
                     _ticker,
                     _granularity,
                     _controllers,

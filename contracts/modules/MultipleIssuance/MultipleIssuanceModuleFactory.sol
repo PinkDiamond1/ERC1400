@@ -9,7 +9,7 @@ import "../../interface/IModuleFactory.sol";
 contract MultipleIssuanceModuleFactory is IModuleFactory {
 
     // Emit when new contract deployed
-    event ModuleDeployed(address _newContract, address admin);
+    event ModuleDeployed(address _newContract, address _admin);
 
     /**
      * @notice deploys the MIM
