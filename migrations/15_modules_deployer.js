@@ -16,6 +16,10 @@ const TokensCheckerFactory = artifacts.require('./TokensCheckerFactory.sol');
 // const partition2 = '0x4973737565640000000000000000000000000000000000000000000000000000'; // Issued in hex
 // const partition3 = '0x4c6f636b65640000000000000000000000000000000000000000000000000000'; // Locked in hex
 // const partitions = [partition1, partition2, partition3];
+const ERC1400_TOKENS_VALIDATOR = '0x45524331343030546f6b656e7356616c696461746f7200000000000000000000'; // 'ERC1400TokensValidator';
+const ERC1400_TOKENS_CHECKER = '0x45524331343030546f6b656e73436865636b6572000000000000000000000000'; // 'ERC1400TokensChecker';
+const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6365000000000000000000'; // 'ERC1400MultipleIssuance';
+
 
 module.exports = async function (deployer, network, accounts) {
   // Set up the STE Factory
@@ -25,9 +29,6 @@ module.exports = async function (deployer, network, accounts) {
   const checkerFactory = await TokensCheckerFactory.deployed();
   const factories = [mimFactory.address, validatorFactory.address, checkerFactory.address];
 
-  const ERC1400_TOKENS_VALIDATOR = '0x45524331343030546f6b656e7356616c696461746f7200000000000000000000'; // 'ERC1400TokensValidator';
-  const ERC1400_TOKENS_CHECKER = '0x45524331343030546f6b656e73436865636b6572000000000000000000000000'; // 'ERC1400TokensChecker';
-  const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6365000000000000000000'; // 'ERC1400MultipleIssuance';
   const protocolNames = [ERC1400_MULTIPLE_ISSUANCE, ERC1400_TOKENS_VALIDATOR, ERC1400_TOKENS_CHECKER];
 
   //  Set up the STE Registry

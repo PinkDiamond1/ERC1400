@@ -23,7 +23,7 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
     bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")
     bytes32 constant MODULE_GETTER = 0x982f24b3bd80807ec3cb227ba152e15c07d66855fa8ae6ca536e689205c0e2e9; //keccak256("moduleGetter")
 
-    event ExtensionContractsDeployed(bytes32[] indexed extensionContractNames, address[] indexed extensionContracts);
+    event ExtensionContractsDeployed(bytes32[] extensionContractNames, address[] extensionContracts);
 
     event ProtocolFactorySet(string _protocolName, address indexed _factoryAddress, uint24 _packedVersion);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);

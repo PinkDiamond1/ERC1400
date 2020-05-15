@@ -97,11 +97,11 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
      // ControllersByPartition interesting method
      // console.log(await this.token.controllersByPartition(partition1));
-      await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
-      await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
-      // Important for a controller minter
-      await this.token.addMinter(controller);
-      await this.token.addMinter(this.multiIssuanceModule.address);
+     //  await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
+     //  await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
+     //  // Important for a controller minter
+     //  await this.token.addMinter(controller);
+     //  await this.token.addMinter(this.multiIssuanceModule.address);
 
       // FOR ERC1820
        let interface1400Implementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_INTERFACE_NAME));
