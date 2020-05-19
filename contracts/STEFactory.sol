@@ -22,8 +22,7 @@ contract STEFactory is ISTEFactory {
         // bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
         address _owner,
-        bytes32[] calldata _hookContractNames,
-        address[] calldata _hookContracts
+        address[] calldata _hookContracts // 0 MIM 1 Validator 2 Checker
     )
         external
         returns(address)
@@ -42,10 +41,6 @@ contract STEFactory is ISTEFactory {
 
         address securityToken = address(contractDeployment);
 
-        // Set preliminary hook contracts
-        for (uint j = 0; j<_hookContracts.length; j++){
-            ERC1400(securityToken).setHookContract(_hookContracts[j], bytes32ToStr(_hookContractNames[j]));
-        }
         address[] memory allControllers = new address[](_controllers.length+1);
 
         for (uint j = 0; j<_controllers.length; j++){
@@ -53,10 +48,10 @@ contract STEFactory is ISTEFactory {
         }
         allControllers[_controllers.length] = _hookContracts[0];
 
-        ERC1400(securityToken).addMinter(_owner);
+        contractDeployment.addMinter(_owner);
         // Add minters all controllers
          for (uint j = 0; j<allControllers.length; j++){
-            ERC1400(securityToken).addMinter(allControllers[j]);
+             contractDeployment.addMinter(allControllers[j]);
          }
 
         // Add all controllers on the token
@@ -64,11 +59,11 @@ contract STEFactory is ISTEFactory {
 
         // Add all partition controllers on the token
         for (uint j = 0; j<_defaultPartitions.length; j++){
-            ERC1400(securityToken).setPartitionControllers(_defaultPartitions[j], allControllers);
+            contractDeployment.setPartitionControllers(_defaultPartitions[j], allControllers);
         }
 
-        // Set the owner of the ERC1400 contract
-        ERC1400(securityToken).transferOwnership(_owner);
+        // Set the owner of the ERC1400 contract to registry for now
+        contractDeployment.transferOwnership(msg.sender);
 
         return securityToken;
     }

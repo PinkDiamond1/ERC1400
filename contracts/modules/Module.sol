@@ -8,13 +8,15 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../proxy/OwnedUpgradeabilityProxy.sol";
 import "../interface/ERC1820Implementer.sol";
+import "erc1820/contracts/ERC1820Client.sol";
+import "../interface/IERC1820Management.sol";
 
 /**
  * @title Interface that any module contract should implement
  * @notice Contract is abstract
  * @notice On OwnedUpgradeabilityProxy, owner is msg.sender
  */
-contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, ERC1820Implementer {
+contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, ERC1820Client, ERC1820Implementer {
     /**
      * @notice Constructor
      * @param factory Address of the factory or admin creating
@@ -22,6 +24,7 @@ contract Module is IModule, ModuleStorage, Pausable, OwnedUpgradeabilityProxy, E
     constructor (address factory) public
     ModuleStorage(factory)
     {
+        delegateManagement(factory); // ERC1820 Allows to use the registry (factory) to connect hook contracts
     }
 
     //Allows owner, factory or permissioned delegate

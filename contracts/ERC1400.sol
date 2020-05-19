@@ -15,13 +15,14 @@ import "./extensions/tokenExtensions/IERC1400TokensValidator.sol";
 import "./extensions/tokenExtensions/IERC1400TokensChecker.sol";
 import "./extensions/userExtensions/IERC1400TokensSender.sol";
 import "./extensions/userExtensions/IERC1400TokensRecipient.sol";
+import "./ISetHooks.sol";
 
 
 /**
  * @title ERC1400
  * @dev ERC1400 logic
  */
-contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer, MinterRole {
+contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer, MinterRole, ISetHooks {
   using SafeMath for uint256;
 
   // Token

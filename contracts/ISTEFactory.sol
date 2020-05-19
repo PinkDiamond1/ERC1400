@@ -27,7 +27,6 @@ interface ISTEFactory {
     // bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
         address _owner,
-        bytes32[] calldata _hookContractNames,
         address[] calldata _hookContracts
     )
     external

@@ -23,7 +23,7 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
     bytes32 constant INITIALIZE = 0x9ef7257c3339b099aacf96e55122ee78fb65a36bd2a6c19249882be9c98633bf; //keccak256("initialised")
     bytes32 constant MODULE_GETTER = 0x982f24b3bd80807ec3cb227ba152e15c07d66855fa8ae6ca536e689205c0e2e9; //keccak256("moduleGetter")
 
-    event ExtensionContractsDeployed(bytes32[] extensionContractNames, address[] extensionContracts);
+    event ExtensionContractsDeployed(bytes32[] extensionContractNames, address[] _extensionContracts);
 
     event ProtocolFactorySet(string _protocolName, address indexed _factoryAddress, uint24 _packedVersion);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
@@ -87,6 +87,7 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
 
     /**
     * @notice Deploys an instance of a new Security Token and records it to the registry
+    * @notice This function does not require ownership, any one can deploy modules if they wish to.
     * @param _extensionProtocolNames The name of the extensions to deploy
     * @param _major The major version of the release
     * @param _minor The minor version of the release
@@ -99,7 +100,6 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
         uint8 _patch
     )
     external
-    onlyOwner
     returns(address[] memory deployedModuleAddresses)
     {
         uint24 _packedVersion = VersionUtils.pack(_major, _minor, _patch);

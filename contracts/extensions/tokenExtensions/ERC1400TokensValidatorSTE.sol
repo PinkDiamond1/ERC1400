@@ -48,6 +48,8 @@ contract ERC1400TokensValidatorSTE is
   {
     ERC1820Implementer._setInterface(ERC1400_TOKENS_VALIDATOR);
 
+    delegateManagement(owner); // ERC1820 Allows to use the registry (factory) to connect hook contracts
+
     _whitelistActivated = whitelistActivated;
     _blacklistActivated = blacklistActivated;
   }

@@ -28,7 +28,9 @@ contract('STEFactory', function ([owner, operator, controller, controller_altern
   describe('deployment', function () {
     beforeEach(async function () {
       this.tokenFactory = await STEFactory.new();
-      this.newToken = await this.tokenFactory.deployToken('ERC1400Token', 'DAU', 1, [controller], CERTIFICATE_SIGNER, true, partitions, owner);
+      this.newToken = await this.tokenFactory.deployToken('ERC1400Token', 'DAU', 1, [controller],
+          //CERTIFICATE_SIGNER, true,
+          partitions, owner, [], []);
       // Check the event logs to get the value returned from the factory emitted
       let log = this.newToken.logs[0];
       this.newcontractAddress = log.args._newContract;

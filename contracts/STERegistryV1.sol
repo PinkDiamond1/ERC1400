@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ISTEFactory.sol";
 import "./ISTERegistry.sol";
 import "./IERC1400.sol";
+import "./ISetHooks.sol";
 import "./storage/EternalStorage.sol";
 import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
@@ -14,6 +15,8 @@ import "./libraries/IOwnable.sol";
 import "./modules/IModulesDeployer.sol";
 import "./proxy/OwnedUpgradeabilityProxy.sol";
 import "./modules/MultipleIssuance/IMultipleIssuanceModule.sol";
+import "./extensions/tokenExtensions/rolesSTE/AdminRole.sol";
+import "erc1820/contracts/ERC1820Client.sol";
 
 /**
  * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400 tokens from the STEFactory
@@ -65,6 +68,10 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     bytes32 constant MODULE_DEPLOYER = 0xa2392d41e64eb031ce614d0fe6a6d6e38ffb12e97e0d9f0e9a60d298ef9c35c7; //keccak256("moduleDeployer")
     bytes32 constant STRGETTER = 0x982f24b3bd80807ec3cb227ba152e15c07d66855fa8ae6ca536e689205c0e2e9; //keccak256("STRGetter")
     bytes32 constant ACTIVE_USERS = 0x425619ce6ba8e9f80f17c0ef298b6557e321d70d7aeff2e74dd157bd87177a9e; //keccak256("activeUsers")
+    bytes32 constant EXTENSION_PROTOCOLS = 0xf0daa55cefd5d55487523f6d3c3bbf9373b98a25210b2b2924ee34587e24832f; //keccak256("extensionProtocols")
+
+    // Emit when modules deployed
+    event ModulesDeployed(address[] _modules, bytes32[] _names);
 
     // Emit when network becomes paused
     event Pause(address account);
@@ -183,6 +190,12 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _steFactoryAddress != address(0),
             "Invalid address"
         );
+        bytes32[] memory hookContractNames = new bytes32[](3);
+        hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
+        hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
+        hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
+
+        setArray(EXTENSION_PROTOCOLS, hookContractNames);
         set(PAUSED, false);
         set(MODULE_DEPLOYER, _modulesDeployer);
         set(OWNER, msg.sender);
@@ -191,17 +204,44 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         set(INITIALIZE, true);
     }
 
-     /**
-     * @notice Deploys an instance of a new Security Token and records it to the registry
-     * @param _name is the name of the token
-     * @param _ticker is the ticker symbol of the security token
-     * @param _granularity is the number of granularity of the Security Token
-     * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
-     * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
-     * @param _protocolVersion Version of securityToken contract
-     * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
-     * - if _protocolVersion == 0 then latest version of securityToken will be generated
-     */
+    /**
+    * @notice Deploys some modules and their owner will be this registry
+    * @param _protocolVersion version
+    */
+    function deployModules(
+        uint256 _protocolVersion
+    )
+    public
+    returns(address[] memory newlyDeployedModules)
+    {
+        if (_protocolVersion == 0) {
+            _protocolVersion = getUintValue(LATEST_VERSION);
+        }
+
+        bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
+        // Use current version
+        uint8[] memory version = VersionUtils.unpack(uint24(_protocolVersion));
+        address[] memory deployedModules = IModulesDeployer(getAddressValue(MODULE_DEPLOYER)).deployMultipleModulesFromFactories(
+            extensionProtocolNames, version[0], version[1], version[2]);
+
+        emit ModulesDeployed(deployedModules, extensionProtocolNames);
+
+        return deployedModules;
+    }
+
+
+    /**
+    * @notice Deploys an instance of a new Security Token and records it to the registry
+    * @param _name is the name of the token
+    * @param _ticker is the ticker symbol of the security token
+    * @param _granularity is the number of granularity of the Security Token
+    * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
+    * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
+    * @param _protocolVersion Version of securityToken contract
+    * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
+    * - if _protocolVersion == 0 then latest version of securityToken will be generated
+    * @param _deployedModules These must be MIM, Validator, Checker, and then any others
+    */
     function generateNewSecurityToken(
         string memory _name,
         string memory _ticker,
@@ -211,7 +251,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         // bool _certificateActivated,
         bytes32[] memory _defaultPartitions,
         address _owner,
-        uint256 _protocolVersion
+        uint256 _protocolVersion,
+        address[] memory _deployedModules
     )
         public
         //whenNotPausedOrOwner
@@ -237,14 +278,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
                     // _certificateActivated,
                     _defaultPartitions,
                     _owner,
-                    _protocolVersion);
-        // Example to use protocol version to make other logic.
-        // if (_protocolVersion == VersionUtils.pack(2, 0, 0)) {
+                    _protocolVersion,
+                    _deployedModules);
+
          emit NewSecurityToken(
                 _ticker, _name, newSecurityTokenAddress, _owner, now, msg.sender, true, _protocolVersion);
         return newSecurityTokenAddress;
     }
-
 
     function _deployToken(
         string memory _name,
@@ -255,26 +295,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         // bool _certificateActivated,
         bytes32[] memory _defaultPartitions,
         address _owner,
-        uint256 _protocolVersion
+        uint256 _protocolVersion,
+        address [] memory _deployedModules
     )
         internal
         returns(address securityTokenAddress)
     {
-        // Useful for doing different operations
-//        uint8[] memory upperLimit = new uint8[](3);
-//        upperLimit[0] = 9;
-//        upperLimit[1] = 99;
-//        upperLimit[2] = 99;
-//        if (VersionUtils.lessThanOrEqual(VersionUtils.unpack(uint24(_protocolVersion)), upperLimit)) {
-//            // Do something
-//        }
-        bytes32[] memory hookContractNames = new bytes32[](3);
-        hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
-        hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
-        hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
-
-        address[] memory deployedModules = IModulesDeployer(getAddressValue(MODULE_DEPLOYER)).deployMultipleModulesFromFactories(
-            hookContractNames, 0, 0, 0);
+        bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
 
         address newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
             _name,
@@ -285,11 +312,22 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             // _certificateActivated,
             _defaultPartitions,
             _owner,
-            hookContractNames,
-            deployedModules
+            // extensionProtocolNames,
+            _deployedModules
         );
 
-        IMultipleIssuanceModule(deployedModules[0]).configure(newSecurityTokenAddress);
+        // Need to set the MIM to the security token now that it is created
+        IMultipleIssuanceModule(_deployedModules[0]).configure(newSecurityTokenAddress);
+
+        // Make sure the owner has the admin role they need on the Validator roles
+        AdminRole(_deployedModules[1]).addAdmin(_owner);
+
+        // I set hooks on all the deployed modules with their corresponding extension names
+        for (uint j = 0; j<extensionProtocolNames.length; j++){
+            ISetHooks(newSecurityTokenAddress).setHookContract( _deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
+        }
+
+        IOwnable(newSecurityTokenAddress).transferOwnership(_owner);
 
         /*solium-disable-next-line security/no-block-members*/
         _setTickerOwnership(_owner, _ticker);
@@ -306,6 +344,19 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         assembly {
             result := mload(add(source, 32))
         }
+    }
+
+    /* bytes32 (fixed-size array) to string (dynamically-sized array) */
+    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
+        uint8 i = 0;
+        while(i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+        bytes memory bytesArray = new bytes(i);
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+        return string(bytesArray);
     }
 
     /**
