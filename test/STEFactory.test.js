@@ -30,7 +30,8 @@ contract('STEFactory', function ([owner, operator, controller, controller_altern
       this.tokenFactory = await STEFactory.new();
       this.newToken = await this.tokenFactory.deployToken('ERC1400Token', 'DAU', 1, [controller],
           //CERTIFICATE_SIGNER, true,
-          partitions, owner, [], []);
+          partitions, owner, ['0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24']); //Random addr
+
       // Check the event logs to get the value returned from the factory emitted
       let log = this.newToken.logs[0];
       this.newcontractAddress = log.args._newContract;

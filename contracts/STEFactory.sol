@@ -22,7 +22,7 @@ contract STEFactory is ISTEFactory {
         // bool _certificateActivated,
         bytes32[] calldata _defaultPartitions,
         address _owner,
-        address[] calldata _hookContracts // 0 MIM 1 Validator 2 Checker
+        address[] calldata _hookContracts // 0 MIM 1 Validator 2 Checker // Could probably make this simpler / controllers
     )
         external
         returns(address)

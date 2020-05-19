@@ -1,17 +1,28 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
 const { shouldFail } = require('openzeppelin-test-helpers');
 
-const ERC1400CertificateMock = artifacts.require('ERC1400CertificateMock');
+const ERC1400 = artifacts.require('ERC1400');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 const ERC1400TokensChecker = artifacts.require('ERC1400TokensChecker');
 const MultipleIssuanceModule = artifacts.require('MultipleIssuanceModule');
+const ModulesDeployer = artifacts.require('ModulesDeployer');
+const TokensValidatorFactory = artifacts.require('TokensValidatorFactory');
+const TokensCheckerFactory = artifacts.require('TokensCheckerFactory');
+const MultipleIssuanceModuleFactory = artifacts.require('MultipleIssuanceModuleFactory');
 
-const ERC1400_TOKENS_VALIDATOR = 'ERC1400TokensValidator';
-const ERC1400_TOKENS_CHECKER = 'ERC1400TokensChecker';
-const ERC1400_MULTIPLE_ISSUANCE = 'ERC1400MultipleIssuance';
+const ERC1400_TOKENS_VALIDATOR_STRING = 'ERC1400TokensValidator';
+const ERC1400_TOKENS_CHECKER_STRING = 'ERC1400TokensChecker';
+const ERC1400_MULTIPLE_ISSUANCE_STRING = 'ERC1400MultipleIssuance';
+
+const ERC1400_TOKENS_VALIDATOR = '0x45524331343030546f6b656e7356616c696461746f7200000000000000000000';
+const ERC1400_TOKENS_CHECKER = '0x45524331343030546f6b656e73436865636b6572000000000000000000000000';
+const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6365000000000000000000';
+
+const protocolNames = [ERC1400_MULTIPLE_ISSUANCE, ERC1400_TOKENS_VALIDATOR, ERC1400_TOKENS_CHECKER];
+
 const ERC1400_INTERFACE_NAME = 'ERC1400Token';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -45,9 +56,22 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
   describe('deployment', function () {
     beforeEach(async function () {
       this.tokenFactory = await STEFactory.new();
-      this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, 0, 0, 1);
-      this.validatorContract = await ERC1400TokensValidator.new(true, false, { from: owner });
-      this.checkerContract = await ERC1400TokensChecker.new( { from: owner });
+
+        this.mimContractFactory = await MultipleIssuanceModuleFactory.new({ from: owner });
+        this.validatorContractFactory = await TokensValidatorFactory.new({ from: owner });
+        this.checkerContractFactory = await TokensCheckerFactory.new({ from: owner });
+        const factories = [this.mimContractFactory.address, this.validatorContractFactory.address, this.checkerContractFactory.address];
+        this.modulesDeployer = await ModulesDeployer.new(protocolNames, factories, 0, 0, 1, {from:owner});
+
+        this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, this.modulesDeployer.address, 0, 0, 1);
+
+        const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules(0);
+
+        this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
+
+        this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+        this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+        this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
 
         const thisTokenTicker = 'DAU';
         const thisTokenName = 'ERC1400Token';
@@ -62,24 +86,24 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
                 // true,
                 partitions,
                 owner,
-                0);
-        let log = this.newSecurityToken.logs[2];
+                0,
+                this.deployedModules);
+        let log = this.newSecurityToken.logs[3];
         this.newcontractAddress = log.args._securityTokenAddress;
 
         // ***Multiple Issuance Module Created
-        this.multiIssuanceModule = await MultipleIssuanceModule.new(this.newcontractAddress, {from: owner});
-        this.token = await ERC1400CertificateMock.at(this.newcontractAddress);
+        this.token = await ERC1400.at(this.newcontractAddress);
 
         // ControllersByPartition interesting method
         // console.log(await this.token.controllersByPartition(partition1));
-        await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
-        await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
-        // Important for a controller minter
-        await this.token.addMinter(controller);
-        await this.token.addMinter(this.multiIssuanceModule.address);
-        await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR, { from: owner });
-        await this.token.setHookContract(this.checkerContract.address, ERC1400_TOKENS_CHECKER, { from: owner });
-        await this.token.setHookContract(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE, { from: owner });
+        // await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
+        // await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
+        // // Important for a controller minter
+        // await this.token.addMinter(controller);
+        // await this.token.addMinter(this.multiIssuanceModule.address);
+        // await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR_STRING, { from: owner });
+        // await this.token.setHookContract(this.checkerContract.address, ERC1400_TOKENS_CHECKER_STRING, { from: owner });
+        // await this.token.setHookContract(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE_STRING, { from: owner });
 
         // Setup KYC Roles
         const whitelistBytes = 0b1;
