@@ -341,6 +341,9 @@ To build each flattened contract in artifacts(To copy into remix)
 
 Current Deployments Here-
 
+Token Deployed
+https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
+
 **MultipleIssuanceModuleFactory**: 0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28
 
 **TokensCheckerFactory**: 0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B
