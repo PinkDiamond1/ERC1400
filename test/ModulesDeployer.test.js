@@ -42,7 +42,7 @@ const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 20;
 const protocolNames = [ERC1400_MULTIPLE_ISSUANCE, ERC1400_TOKENS_VALIDATOR, ERC1400_TOKENS_CHECKER];
 
 
-contract('MultipleIssuanceModule', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
+contract('ModulesDeployer', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
   before(async function () {
     this.registry = await ERC1820Registry.at('0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24');
   });
@@ -70,6 +70,40 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
           it('cannot be initialized again', async function () {
               const factories = [this.mimContractFactory.address, this.validatorContractFactory.address, this.checkerContractFactory.address];
               await shouldFail.reverting(this.modulesDeployer.initialize(protocolNames, factories, 0, 0, 1));
+          });
+      });
+
+      describe('modules deployer', function () {
+          it('can get current factory address and change module protocols', async function () {
+              const currrentMimFactory = await this.modulesDeployer.getCurrentExtensionFactoryAddress(ERC1400_MULTIPLE_ISSUANCE);
+              assert.equal(currrentMimFactory, this.mimContractFactory.address);
+
+              const randomAddress = '0x5555555555555555555555555555555555555555';
+              await this.modulesDeployer.setModuleProtocolFactories(protocolNames,
+                  [randomAddress, this.validatorContractFactory.address, this.checkerContractFactory.address], 0, 0, 2);
+
+              await this.modulesDeployer.setLatestVersion(0, 0, 2);
+              const newMimFactory = await this.modulesDeployer.getCurrentExtensionFactoryAddress(ERC1400_MULTIPLE_ISSUANCE);
+              assert.equal(newMimFactory, randomAddress);
+
+              const latestVersion = await this.modulesDeployer.getLatestVersion();
+              assert.equal(latestVersion, 2);
+
+              await this.modulesDeployer.setLatestVersion(0, 0, 1);
+
+              const latestVersionNew = await this.modulesDeployer.getLatestVersion();
+              assert.equal(latestVersionNew, 1);
+
+              const currentVersionMimFactory = await this.modulesDeployer.getCurrentExtensionFactoryAddress(ERC1400_MULTIPLE_ISSUANCE);
+              assert.equal(currentVersionMimFactory, this.mimContractFactory.address);
+
+              const newFactoryForVersion = await this.modulesDeployer.getFactoryForProtocolAndVersion(ERC1400_MULTIPLE_ISSUANCE, 0, 0, 2);
+              assert.equal(newFactoryForVersion, randomAddress);
+
+              await this.modulesDeployer.removeProtocolFactory(ERC1400_MULTIPLE_ISSUANCE, 0, 0, 2);
+
+              const factoryRemoved = await this.modulesDeployer.getFactoryForProtocolAndVersion(ERC1400_MULTIPLE_ISSUANCE, 0, 0, 2);
+              assert.equal(factoryRemoved, '0x0000000000000000000000000000000000000000');
           });
       });
   });

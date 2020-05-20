@@ -297,18 +297,18 @@ $ yarn truffle migrate --network ropsten
 
 ### EXTRA STEPS FOR THIS FORK
 How to run the tests
-Run ganache (give it a high gas limit):
+Run ganache:
 ```
-ganache-cli -i 15 -l 100000000
+ganache-cli
 ```
 
 Run the unit tests with truffle (already globally downloaded)
 ```
-truffle test
+yarn truffle test
 ```
 To mix all the necessities of the Backward compatible ERC1400ERC20 (File to create bin/abi and validate source code in etherscan
 ```
-yarn build:ERC1400ERC20
+yarn build:ERC1400
 ```
 ```
 yarn build:ERC1400TokensValidator
@@ -333,6 +333,31 @@ You can also test deploying the contract, or using the compiled contract to comm
 *Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400ERC20.
 
 OR just migrate normally as above and run truffle verify and everything will be on etherscan
+
+###Deployments (Kovan)
+Run 
+```yarn all```
+To build each flattened contract in artifacts(To copy into remix)
+
+Current Deployments Here-
+
+**MultipleIssuanceModuleFactory**: 0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28
+
+**TokensCheckerFactory**: 0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B
+
+**TokensValidatorFactory**: 0x2Ee5CdC6eC27d8586C8337eC241752bE1e0Bd26b
+
+**ModulesDeployer**: 0x1A5C1E1F5c9E1E393bAf565E5036994E8502D004
+
+**STEFactory**: 0xF6285DBE956943864856B63C887e270D079E9eD7
+
+**STERegistryV1**: 0xEF29Bf25c6d4fC81028aEfb8126Ee63da6890193
+
+Parameters to deploy the ModulesDeployer above included:
+
+["0x455243313430304d756c7469706c6549737375616e6365000000000000000000","0x45524331343030546f6b656e7356616c696461746f7200000000000000000000","0x45524331343030546f6b656e73436865636b6572000000000000000000000000"]
+
+["0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28","0x2Ee5CdC6eC27d8586C8337eC241752bE1e0Bd26b","0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B"]
 
 
 ## APPENDIX

@@ -27,7 +27,7 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
 
     event ProtocolFactorySet(string _protocolName, address indexed _factoryAddress, uint24 _packedVersion);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
-    event ProtocolFactoryRemoved(string _protocolName, uint8 _major, uint8 _minor, uint8 _patch);
+    event ProtocolFactoryRemoved(bytes32 _protocolName, uint8 _major, uint8 _minor, uint8 _patch);
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
@@ -148,9 +148,9 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
      * @notice Get the current STFactory Address
      * @param _protocol The protocol of which we would like the factory to deploy
      */
-    function getCurrentExtensionFactoryAddress(string calldata _protocol) external view returns(address stFactoryAddress){
+    function getCurrentExtensionFactoryAddress(bytes32 _protocol) external view returns(address stFactoryAddress){
         uint256 _latestVersion = getUintValue(LATEST_VERSION);
-        return getAddressValue(Encoder.getKey(_protocol, _latestVersion));
+        return getAddressValue(Encoder.getKey(bytes32ToStr(_protocol), _latestVersion));
     }
 
     function bytes32ToStr(bytes32 _bytes32) public pure returns (string memory) {
@@ -214,10 +214,10 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
     * @param _minor Minor version of the proxy.
     * @param _patch Patch version of the proxy.
     */
-    function removeProtocolFactory(string memory _protocol, uint8 _major, uint8 _minor, uint8 _patch) public onlyOwner {
+    function removeProtocolFactory(bytes32 _protocol, uint8 _major, uint8 _minor, uint8 _patch) public onlyOwner {
         uint24 _packedVersion = VersionUtils.pack(_major, _minor, _patch);
         require(getUintValue(LATEST_VERSION) != _packedVersion, "Cannot remove latestVersion");
-        set(Encoder.getKey(_protocol, uint256(_packedVersion)), address(0));
+        set(Encoder.getKey(bytes32ToStr(_protocol), uint256(_packedVersion)), address(0));
         emit ProtocolFactoryRemoved(_protocol, _major, _minor, _patch);
     }
 
@@ -236,23 +236,13 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
     * @notice Get factory address
     */
     function getFactoryForProtocolAndVersion(
-        string memory _protocol,
+        bytes32 _protocol,
         uint8 _major,
         uint8 _minor,
         uint8 _patch)
     public view onlyOwner returns (address extensionFactory) {
         uint24 _packedVersion = VersionUtils.pack(_major, _minor, _patch);
-        return getAddressValue(Encoder.getKey(_protocol, _packedVersion));
-    }
-
-    /**
-    * @notice Get factory address - convenience
-    */
-    function getFactoryForProtocolAndLatestVersion(
-        string memory protocol)
-    public view onlyOwner returns (address extensionFactory) {
-        uint256 _latestVersion = getUintValue(LATEST_VERSION);
-        return getAddressValue(Encoder.getKey(protocol, _latestVersion));
+        return getAddressValue(Encoder.getKey(bytes32ToStr(_protocol), _packedVersion));
     }
 
     function _setLatestVersion(uint8 _major, uint8 _minor, uint8 _patch) internal {
@@ -261,7 +251,7 @@ contract ModulesDeployer is IModulesDeployer, EternalStorage, OwnedUpgradeabilit
         emit LatestVersionSet(_major, _minor, _patch);
     }
 
-    function getLatestVersion(uint8 _major, uint8 _minor, uint8 _patch) public view returns (uint256 latest) {
+    function getLatestVersion() public view returns (uint256 latest) {
         return
         getUintValue(LATEST_VERSION);
     }
