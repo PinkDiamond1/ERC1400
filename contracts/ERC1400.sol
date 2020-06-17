@@ -16,13 +16,14 @@ import "./extensions/tokenExtensions/IERC1400TokensChecker.sol";
 import "./extensions/userExtensions/IERC1400TokensSender.sol";
 import "./extensions/userExtensions/IERC1400TokensRecipient.sol";
 import "./ISetHooks.sol";
+import "./IFetchSupply.sol";
 
 
 /**
  * @title ERC1400
  * @dev ERC1400 logic
  */
-contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer, MinterRole, ISetHooks {
+contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer, MinterRole, ISetHooks, IFetchSupply {
   using SafeMath for uint256;
 
   // Token
@@ -36,6 +37,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   // User extensions (hooks triggered by the contract)
   string constant internal ERC1400_TOKENS_SENDER = "ERC1400TokensSender";
   string constant internal ERC1400_TOKENS_RECIPIENT = "ERC1400TokensRecipient";
+  string constant internal ERC1400_TOKENS_CHECKPOINTS = "ERC1400TokensCheckpoints";
 
   /************************************* Token description ****************************************/
   string internal _name;
@@ -610,6 +612,14 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   function totalPartitions() external view returns (bytes32[] memory) {
     return _totalPartitions;
   }
+
+  /**
+ * @dev Get supply for a specific partition
+ * @return Total supply for the partition
+ */
+  function totalSupplyByPartition(bytes32 partition) external view returns (uint256){
+    return _totalSupplyByPartition[partition];
+  }
   /************************************************************************************************/
 
 
@@ -1011,9 +1021,14 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   {
     address recipientImplementation;
     recipientImplementation = interfaceAddr(to, ERC1400_TOKENS_RECIPIENT);
-
     if (recipientImplementation != address(0)) {
       IERC1400TokensRecipient(recipientImplementation).tokensReceived(msg.sig, partition, operator, from, to, value, data, operatorData);
+    }
+
+    address checkpointImplementation;
+    checkpointImplementation = interfaceAddr(address(this), ERC1400_TOKENS_CHECKPOINTS);
+    if (checkpointImplementation != address(0)) {
+      IERC1400TokensRecipient(checkpointImplementation).tokensReceived(msg.sig, partition, operator, from, to, value, data, operatorData);
     }
   }
   /************************************************************************************************/
