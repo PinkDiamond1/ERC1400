@@ -14,7 +14,7 @@ import "./libraries/DecimalMath.sol";
 import "./libraries/IOwnable.sol";
 import "./modules/IModulesDeployer.sol";
 import "./proxy/OwnedUpgradeabilityProxy.sol";
-import "./modules/MultipleIssuance/IMultipleIssuanceModule.sol";
+import "./modules/IConfigurableModule.sol";
 import "./extensions/tokenExtensions/rolesSTE/AdminRole.sol";
 import "erc1820/contracts/ERC1820Client.sol";
 
@@ -190,10 +190,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _steFactoryAddress != address(0),
             "Invalid address"
         );
-        bytes32[] memory hookContractNames = new bytes32[](3);
+
+        // We could figure out how to pass this in to contract instead..
+        bytes32[] memory hookContractNames = new bytes32[](4);
         hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
         hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
         hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
+        hookContractNames[3] = stringToBytes32("ERC1400TokensCheckpoints");
 
         setArray(EXTENSION_PROTOCOLS, hookContractNames);
         set(PAUSED, false);
@@ -209,7 +212,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     * @param _protocolVersion version
     */
     function deployModules(
-        uint256 _protocolVersion
+        uint256 _protocolVersion,
+        bytes32[] memory extensionProtocolsToDeploy
     )
     public
     returns(address[] memory newlyDeployedModules)
@@ -218,13 +222,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _protocolVersion = getUintValue(LATEST_VERSION);
         }
 
-        bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
+        //bytes32[] memory extensionProtocolsToDeploy = getArrayBytes32(EXTENSION_PROTOCOLS);
         // Use current version
         uint8[] memory version = VersionUtils.unpack(uint24(_protocolVersion));
         address[] memory deployedModules = IModulesDeployer(getAddressValue(MODULE_DEPLOYER)).deployMultipleModulesFromFactories(
-            extensionProtocolNames, version[0], version[1], version[2]);
+            extensionProtocolsToDeploy, version[0], version[1], version[2]);
 
-        emit ModulesDeployed(deployedModules, extensionProtocolNames);
+        emit ModulesDeployed(deployedModules, extensionProtocolsToDeploy);
 
         return deployedModules;
     }
@@ -296,7 +300,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         bytes32[] memory _defaultPartitions,
         address _owner,
         uint256 _protocolVersion,
-        address [] memory _deployedModules
+        address [] memory _deployedModules // Must include first 3 modules in ext protocols, rest are optional
     )
         internal
         returns(address securityTokenAddress)
@@ -316,15 +320,16 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             _deployedModules
         );
 
-        // Need to set the MIM to the security token now that it is created
-        IMultipleIssuanceModule(_deployedModules[0]).configure(newSecurityTokenAddress);
-
         // Make sure the owner has the admin role they need on the Validator roles
         AdminRole(_deployedModules[1]).addAdmin(_owner);
 
         // I set hooks on all the deployed modules with their corresponding extension names
-        for (uint j = 0; j<extensionProtocolNames.length; j++){
-            ISetHooks(newSecurityTokenAddress).setHookContract( _deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
+        for (uint j = 0; j<_deployedModules.length; j++){
+            // MIM or Checkpoints
+            if(j == 0 || j == 3){
+                IConfigurableModule(_deployedModules[j]).configure(newSecurityTokenAddress);
+            }
+            ISetHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
         }
 
         IOwnable(newSecurityTokenAddress).transferOwnership(_owner);

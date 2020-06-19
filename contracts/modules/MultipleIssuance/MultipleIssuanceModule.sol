@@ -3,9 +3,9 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../Module.sol";
 import "../../IERC1400.sol";
-import "./IMultipleIssuanceModule.sol";
+import "../IConfigurableModule.sol";
 
-contract MultipleIssuanceModule is Module, IMultipleIssuanceModule {
+contract MultipleIssuanceModule is Module, IConfigurableModule {
     using SafeMath for uint256;
 
     string constant internal ERC1400_MULTIPLE_ISSUANCE = "ERC1400MultipleIssuance";

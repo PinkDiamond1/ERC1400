@@ -3,11 +3,12 @@ pragma solidity 0.5.10;
 import "../../extensions/userExtensions/IERC1400TokensRecipient.sol";
 import "../../interface/ERC1820Implementer.sol";
 import "../../IFetchSupply.sol";
+import "../IConfigurableModule.sol";
 import "../Module.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 
-contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Module {
+contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Module, IConfigurableModule {
 
   string constant internal CHECKPOINTS_MODULE = "ERC1400TokensCheckpoints";
 
@@ -93,10 +94,11 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
     external
   {
 //    require(_canReceive(from, to, value, data), "57"); // 0x57	invalid receiver
-    //adjustBalanceCheckpoints(from);
+
     require(msg.sender == address(securityToken), "Sender is not the security token");
+
     _adjustCheckpoints(from, IERC1400(securityToken).balanceOfByPartition(partition, from), partition, currentCheckpointId);
-    //adjustBalanceCheckpoints(to);
+
     _adjustCheckpoints(to, IERC1400(securityToken).balanceOfByPartition(partition, to), partition, currentCheckpointId);
 
   }
@@ -119,7 +121,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
       uint256 totalSupplyForPartition = IFetchSupply(address(securityToken))
       .totalSupplyByPartition(partitions[i]);
 
-      // Push the new checkpoint to the partition
+      // Push the new checkpoint to the partition (TODO getters for this)
       checkpointByPartitionTotalSupply.partitionedCheckpoints[partitions[i]].push
       (Checkpoint({checkpointId: currentCheckpointId, value: totalSupplyForPartition}));
     }
@@ -180,7 +182,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
    */
   function _adjustCheckpoints(address _tokenHolder, uint256 _newValue, bytes32 _partition, uint256 _currentCheckpointId) internal  {
     uint256 chkptLength = checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition].length;
-    if ((checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition][chkptLength - 1].checkpointId == _currentCheckpointId)){
+    if (chkptLength != 0 && (checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition][chkptLength - 1].checkpointId == _currentCheckpointId)){
       // Existing checkpoint, update the value
       checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition][chkptLength -1].value = _newValue;
     } else {
