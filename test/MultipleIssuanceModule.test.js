@@ -47,7 +47,6 @@ const approvedAmount = 50000;
 
 const MAX_NUMBER_OF_ISSUANCES_IN_A_BATCH = 20;
 
-
 contract('MultipleIssuanceModule', function ([owner, operator, controller, controller_alternative1, tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, unknown, blacklisted]) {
   before(async function () {
     this.registry = await ERC1820Registry.at('0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24');
@@ -65,7 +64,10 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
 
         this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, this.modulesDeployer.address, 0, 0, 1);
 
-        const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules(0);
+        const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules(0,
+            [protocolNames[0],
+                protocolNames[1],
+                protocolNames[2]]);
 
         this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
 
