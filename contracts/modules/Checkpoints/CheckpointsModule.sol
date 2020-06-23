@@ -132,39 +132,49 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
 
   /**
  * @notice Queries a value at a defined checkpoint
+ * @param _partition is the partition we are interested in
  * @param _tokenHolder the holder we are interested in
  * @param _checkpointId is the Checkpoint ID to query
- * @param _partition is the partition we are interested in
- * @param _currentValue is the Current value of checkpoint
  * @return uint256
  */
-  function getValueAt(address _tokenHolder, uint256 _checkpointId, bytes32 _partition, uint256 _currentValue) external view returns(uint256) {
-    //Checkpoint id 0 is when the token is first created - everyone has a zero balance // ???
+  function getValueAt(bytes32 _partition, address _tokenHolder, uint256 _checkpointId) external view returns(uint256) {
     Checkpoint[] memory partitionCheckpoints = checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition];
+
+    // Checkpoint id 0 is when the token is first created - everyone has a zero balance
     if (_checkpointId == 0) {
       return 0;
     }
+
+    // There are no recorded partitioned token transfers recorded by module for token holder
     if (partitionCheckpoints.length == 0) {
-      return _currentValue; // This should be likely 0
+      return 0;
     }
-    if (partitionCheckpoints[0].checkpointId >= _checkpointId) {
+
+    // The first checkpoint for this tokenholder had an id equal to or greater than the checkpoint id passed as argument
+    if (partitionCheckpoints[0].checkpointId >= _checkpointId - 1) {
       return partitionCheckpoints[0].value;
     }
-    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId < _checkpointId) {
-      return _currentValue; // This should be likely 0
-    }
-    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId == _checkpointId) {
+
+    // If checkpoint id passed as argument is greater than the most recent checkpoint taken, just return the most recent one
+    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId < _checkpointId - 1) {
       return partitionCheckpoints[partitionCheckpoints.length - 1].value;
     }
+
+    // Most recent checkpoint same as checkpoint passed as argument
+    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId == _checkpointId - 1) {
+      return partitionCheckpoints[partitionCheckpoints.length - 1].value;
+    }
+
+    // Search for the checkpoint
     uint256 min = 0;
     uint256 max = partitionCheckpoints.length - 1;
     while (max > min) {
       uint256 mid = (max + min) / 2;
-      if (partitionCheckpoints[mid].checkpointId == _checkpointId) {
+      if (partitionCheckpoints[mid].checkpointId == _checkpointId - 1) {
         max = mid;
         break;
       }
-      if (partitionCheckpoints[mid].checkpointId < _checkpointId) {
+      if (partitionCheckpoints[mid].checkpointId < _checkpointId - 1) {
         min = mid + 1;
       } else {
         max = mid;
