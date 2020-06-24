@@ -7,7 +7,6 @@ import "../IConfigurableModule.sol";
 import "../Module.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-
 contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Module, IConfigurableModule {
 
   string constant internal CHECKPOINTS_MODULE = "ERC1400TokensCheckpoints";
@@ -30,7 +29,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
   uint256[] checkpointTimes;
 
   // Map the above checkpoint id to the total supply at the time it was made
-  mapping (uint256 => uint256) checkpointTotalSupply;
+  Checkpoint[] checkpointTotalSupply;
 
   // Map the above checkpoint id to the partitions total supply at time it was made
   PartitionedCheckpoints checkpointByPartitionTotalSupply;
@@ -112,7 +111,8 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
     checkpointTimes.push(now);
 
     // Overall Token Total Supply
-    checkpointTotalSupply[currentCheckpointId] = IERC20(securityToken).totalSupply();
+    checkpointTotalSupply.push
+    (Checkpoint({checkpointId: currentCheckpointId, value: IERC20(securityToken).totalSupply()}));
 
     // Partitioned tokens
     bytes32[] memory partitions = IFetchSupply(securityToken).totalPartitions();
@@ -138,7 +138,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
  * @return uint256
  */
   function getValueAt(bytes32 _partition, address _tokenHolder, uint256 _checkpointId) external view returns(uint256) {
-    Checkpoint[] memory partitionCheckpoints = checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition];
+    Checkpoint[] storage _checkpoints = checkpointTokenHolderBalances[_tokenHolder].partitionedCheckpoints[_partition];
 
     // Checkpoint id 0 is when the token is first created - everyone has a zero balance
     if (_checkpointId == 0) {
@@ -146,42 +146,147 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
     }
 
     // There are no recorded partitioned token transfers recorded by module for token holder
-    if (partitionCheckpoints.length == 0) {
+    if (_checkpoints.length == 0) {
       return 0;
     }
 
     // The first checkpoint for this tokenholder had an id equal to or greater than the checkpoint id passed as argument
-    if (partitionCheckpoints[0].checkpointId >= _checkpointId - 1) {
-      return partitionCheckpoints[0].value;
+    if (_checkpoints[0].checkpointId >= _checkpointId - 1) {
+      return _checkpoints[0].value;
     }
 
     // If checkpoint id passed as argument is greater than the most recent checkpoint taken, just return the most recent one
-    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId < _checkpointId - 1) {
-      return partitionCheckpoints[partitionCheckpoints.length - 1].value;
+    if (_checkpoints[_checkpoints.length - 1].checkpointId < _checkpointId - 1) {
+      return _checkpoints[_checkpoints.length - 1].value;
     }
 
     // Most recent checkpoint same as checkpoint passed as argument
-    if (partitionCheckpoints[partitionCheckpoints.length - 1].checkpointId == _checkpointId - 1) {
-      return partitionCheckpoints[partitionCheckpoints.length - 1].value;
+    if (_checkpoints[_checkpoints.length - 1].checkpointId == _checkpointId - 1) {
+      return _checkpoints[_checkpoints.length - 1].value;
     }
 
     // Search for the checkpoint
     uint256 min = 0;
-    uint256 max = partitionCheckpoints.length - 1;
+    uint256 max = _checkpoints.length - 1;
     while (max > min) {
       uint256 mid = (max + min) / 2;
-      if (partitionCheckpoints[mid].checkpointId == _checkpointId - 1) {
+      if (_checkpoints[mid].checkpointId == _checkpointId - 1) {
         max = mid;
         break;
       }
-      if (partitionCheckpoints[mid].checkpointId < _checkpointId - 1) {
+      if (_checkpoints[mid].checkpointId < _checkpointId - 1) {
         min = mid + 1;
       } else {
         max = mid;
       }
     }
-    return partitionCheckpoints[max].value;
+    return _checkpoints[max].value;
   }
+
+  /**
+ * @notice Queries a value at a defined checkpoint
+ * @param _partition is the partition we are interested in
+ * @param _checkpointId is the Checkpoint ID to query
+ * @return uint256
+ */
+  function getPartitionedTotalSupplyAt(bytes32 _partition, uint256 _checkpointId) external view returns(uint256) {
+    Checkpoint[] storage _checkpoints = checkpointByPartitionTotalSupply.partitionedCheckpoints[_partition];
+
+    // Checkpoint id 0 is when the token is first created - everyone has a zero balance
+    if (_checkpointId == 0) {
+      return 0;
+    }
+
+    // There are no recorded partitioned token transfers recorded by module for token holder
+    if (_checkpoints.length == 0) {
+      return 0;
+    }
+
+    // The first checkpoint for this tokenholder had an id equal to or greater than the checkpoint id passed as argument
+    if (_checkpoints[0].checkpointId >= _checkpointId) {
+      return _checkpoints[0].value;
+    }
+
+    // If checkpoint id passed as argument is greater than the most recent checkpoint taken, just return the most recent one
+    if (_checkpoints[_checkpoints.length - 1].checkpointId < _checkpointId) {
+      return _checkpoints[_checkpoints.length - 1].value;
+    }
+
+    // Most recent checkpoint same as checkpoint passed as argument
+    if (_checkpoints[_checkpoints.length - 1].checkpointId == _checkpointId) {
+      return _checkpoints[_checkpoints.length - 1].value;
+    }
+
+    // Search for the checkpoint
+    uint256 min = 0;
+    uint256 max = _checkpoints.length - 1;
+    while (max > min) {
+      uint256 mid = (max + min) / 2;
+      if (_checkpoints[mid].checkpointId == _checkpointId) {
+        max = mid;
+        break;
+      }
+      if (_checkpoints[mid].checkpointId < _checkpointId) {
+        min = mid + 1;
+      } else {
+        max = mid;
+      }
+    }
+    return _checkpoints[max].value;
+  }
+
+
+  /**
+ * @notice Queries a value at a defined checkpoint for total supply
+ * @param _checkpointId is the Checkpoint ID to query
+ * @return uint256
+ */
+  function getTotalSupplyAt(uint256 _checkpointId) external view returns(uint256) {
+    Checkpoint[] storage _checkpoints = checkpointTotalSupply;
+
+    // Checkpoint id 0 is when the token is first created - everyone has a zero balance
+    if (_checkpointId == 0) {
+      return 0;
+    }
+
+    // There are no recorded partitioned token transfers recorded by module for token holder
+    if (_checkpoints.length == 0) {
+      return 0;
+    }
+
+    // The first checkpoint for this tokenholder had an id equal to or greater than the checkpoint id passed as argument
+    if (_checkpoints[0].checkpointId >= _checkpointId) {
+      return _checkpoints[0].value;
+    }
+
+    // If checkpoint id passed as argument is greater than the most recent checkpoint taken, just return the most recent one
+    if (_checkpoints[_checkpoints.length - 1].checkpointId < _checkpointId) {
+      return _checkpoints[_checkpoints.length - 1].value;
+    }
+
+    // Most recent checkpoint same as checkpoint passed as argument
+    if (_checkpoints[_checkpoints.length - 1].checkpointId == _checkpointId) {
+      return _checkpoints[_checkpoints.length - 1].value;
+    }
+
+    // Search for the checkpoint
+    uint256 min = 0;
+    uint256 max = _checkpoints.length - 1;
+    while (max > min) {
+      uint256 mid = (max + min) / 2;
+      if (_checkpoints[mid].checkpointId == _checkpointId) {
+        max = mid;
+        break;
+      }
+      if (_checkpoints[mid].checkpointId < _checkpointId) {
+        min = mid + 1;
+      } else {
+        max = mid;
+      }
+    }
+    return _checkpoints[max].value;
+  }
+
 
   /**
    * @notice Stores the changes to the checkpoint objects

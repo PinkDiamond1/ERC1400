@@ -156,6 +156,16 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
           assert.equal(tokenholderPartitionedValueAt0, 0);
           const tokenholderPartitionedValueAt1 = await this.checkpointModule.getValueAt(partition1, tokenHolder, 1);
           assert.equal(tokenholderPartitionedValueAt1, 0);
+
+          const partition1ValueAt0 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 0);
+          assert.equal(partition1ValueAt0, 0);
+          const partition1ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 1);
+          assert.equal(partition1ValueAt1, 0);
+
+          const totalSupplyValueAt0 = await this.checkpointModule.getTotalSupplyAt(0);
+          assert.equal(totalSupplyValueAt0, 0);
+          const totalSupplyValueAt1 = await this.checkpointModule.getTotalSupplyAt(1);
+          assert.equal(totalSupplyValueAt1, 0);
       });
     });
 
@@ -200,6 +210,29 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
           assert.equal(tokenholderPartitionedValueAt0Check, 0);
           const tokenholderPartitionedValueAt1Check = await this.checkpointModule.getValueAt(partition1, tokenHolder, 1);
           assert.equal(tokenholderPartitionedValueAt1Check, issuanceAmount);
+
+          // Partition supply
+          const partition1ValueAt0 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 0);
+          assert.equal(partition1ValueAt0, 0);
+          const partition1ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 1);
+          assert.equal(partition1ValueAt1, issuanceAmount * 4);
+          const partition1ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 2);
+          assert.equal(partition1ValueAt2, issuanceAmount * 4);
+
+          const partition2ValueAt0 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 0);
+          assert.equal(partition2ValueAt0, 0);
+          const partition2ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 1);
+          assert.equal(partition2ValueAt1, issuanceAmount * 4);
+          const partition2ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 2);
+          assert.equal(partition2ValueAt2, issuanceAmount * 4);
+
+          // Total supply
+          const totalSupplyValueAt0 = await this.checkpointModule.getTotalSupplyAt(0);
+          assert.equal(totalSupplyValueAt0, 0);
+          const totalSupplyValueAt1 = await this.checkpointModule.getTotalSupplyAt(1);
+          assert.equal(totalSupplyValueAt1, issuanceAmount * 8);
+          const totalSupplyValueAt2 = await this.checkpointModule.getTotalSupplyAt(2);
+          assert.equal(totalSupplyValueAt2, issuanceAmount * 8);
         });
 
          it('can transfer tokens and get through to the second checkpoint', async function () {
@@ -242,6 +275,28 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
              const tokenholderPartitionedValueAt2Check = await this.checkpointModule.getValueAt(partition1, tokenHolder, 2);
              assert.equal(tokenholderPartitionedValueAt2Check, issuanceAmount * 2);
 
+             // Partition supply
+             const partition1ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 1);
+             assert.equal(partition1ValueAt1, issuanceAmount * 4);
+             const partition1ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 2);
+             assert.equal(partition1ValueAt2, issuanceAmount * 6);
+             const partition1ValueAt3 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 3);
+             assert.equal(partition1ValueAt3, issuanceAmount * 6);
+
+             const partition2ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 1);
+             assert.equal(partition2ValueAt1, issuanceAmount * 4);
+             const partition2ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 2);
+             assert.equal(partition2ValueAt2, issuanceAmount * 6);
+             const partition2ValueAt3 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 3);
+             assert.equal(partition2ValueAt3, issuanceAmount * 6);
+
+             // Total supply
+             const totalSupplyValueAt1 = await this.checkpointModule.getTotalSupplyAt(1);
+             assert.equal(totalSupplyValueAt1, issuanceAmount * 8);
+             const totalSupplyValueAt2 = await this.checkpointModule.getTotalSupplyAt(2);
+             assert.equal(totalSupplyValueAt2, issuanceAmount * 12);
+             const totalSupplyValueAt3 = await this.checkpointModule.getTotalSupplyAt(3);
+             assert.equal(totalSupplyValueAt3, issuanceAmount * 12);
          });
 
          it('can force transfer tokens multiple times and get through to the third checkpoint', async function () {
@@ -294,6 +349,12 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
              assert.equal(tokenholderPartitionedValueAt2Check, issuanceAmount * 2);
              const tokenholderPartitionedValueAt3Check = await this.checkpointModule.getValueAt(partition1, tokenHolder, 3);
              assert.equal(tokenholderPartitionedValueAt3Check, issuanceAmount * 3);
+
+             // No change to supply
+             const totalSupplyValueAt3 = await this.checkpointModule.getTotalSupplyAt(3);
+             assert.equal(totalSupplyValueAt3, issuanceAmount * 12);
+             const totalSupplyValueAt4 = await this.checkpointModule.getTotalSupplyAt(4);
+             assert.equal(totalSupplyValueAt4, issuanceAmount * 12);
         });
 
          it('can force transfer tokens multiple times and get through to the fourth checkpoint', async function () {
@@ -339,6 +400,39 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
              assert.equal(tokenholderPartitionedValueAt3Check, issuanceAmount * 3);
              const tokenholderPartitionedValueAt4Check = await this.checkpointModule.getValueAt(partition1, tokenHolder, 4);
              assert.equal(tokenholderPartitionedValueAt4Check, issuanceAmount * 4);
+
+             // Partition supply
+             const partition1ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 1);
+             assert.equal(partition1ValueAt1, issuanceAmount * 4);
+             const partition1ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 2);
+             assert.equal(partition1ValueAt2, issuanceAmount * 6);
+             const partition1ValueAt3 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 3);
+             assert.equal(partition1ValueAt3, issuanceAmount * 6);
+             const partition1ValueAt4 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 4);
+             assert.equal(partition1ValueAt4, issuanceAmount * 8);
+
+             const partition2ValueAt1 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 1);
+             assert.equal(partition2ValueAt1, issuanceAmount * 4);
+             const partition2ValueAt2 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 2);
+             assert.equal(partition2ValueAt2, issuanceAmount * 6);
+             const partition2ValueAt3 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 3);
+             assert.equal(partition2ValueAt3, issuanceAmount * 6);
+             const partition2ValueAt4 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 4);
+             assert.equal(partition2ValueAt4, issuanceAmount * 8);
+
+             // Total supply
+             const totalSupplyValueAt0 = await this.checkpointModule.getTotalSupplyAt(0);
+             assert.equal(totalSupplyValueAt0, 0);
+             const totalSupplyValueAt1 = await this.checkpointModule.getTotalSupplyAt(1);
+             assert.equal(totalSupplyValueAt1, issuanceAmount * 8);
+             const totalSupplyValueAt2 = await this.checkpointModule.getTotalSupplyAt(2);
+             assert.equal(totalSupplyValueAt2, issuanceAmount * 12);
+             const totalSupplyValueAt3 = await this.checkpointModule.getTotalSupplyAt(3);
+             assert.equal(totalSupplyValueAt3, issuanceAmount * 12);
+             const totalSupplyValueAt4 = await this.checkpointModule.getTotalSupplyAt(4);
+             assert.equal(totalSupplyValueAt4, issuanceAmount * 16);
+             const totalSupplyValueAt5 = await this.checkpointModule.getTotalSupplyAt(5);
+             assert.equal(totalSupplyValueAt5, issuanceAmount * 16);
          });
      });
     });
