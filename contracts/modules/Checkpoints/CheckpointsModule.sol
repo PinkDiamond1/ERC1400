@@ -6,8 +6,9 @@ import "../../IFetchSupply.sol";
 import "../IConfigurableModule.sol";
 import "../Module.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "./ICheckpointsModule.sol";
 
-contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Module, IConfigurableModule {
+contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Module, IConfigurableModule, ICheckpointsModule {
 
   string constant internal CHECKPOINTS_MODULE = "ERC1400TokensCheckpoints";
 
@@ -131,7 +132,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
   }
 
   /**
- * @notice Queries a value at a defined checkpoint
+ * @notice Queries a partitioned value at a defined checkpoint
  * @param _partition is the partition we are interested in
  * @param _tokenHolder the holder we are interested in
  * @param _checkpointId is the Checkpoint ID to query
@@ -184,7 +185,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
   }
 
   /**
- * @notice Queries a value at a defined checkpoint
+ * @notice Queries a partitioned value at a defined checkpoint
  * @param _partition is the partition we are interested in
  * @param _checkpointId is the Checkpoint ID to query
  * @return uint256
