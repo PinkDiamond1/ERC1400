@@ -121,7 +121,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, ERC1820Implementer, Modul
       uint256 totalSupplyForPartition = IFetchSupply(address(securityToken))
       .totalSupplyByPartition(partitions[i]);
 
-      // Push the new checkpoint to the partition (TODO getters for this)
+      // Push the new checkpoint to the partition
       checkpointByPartitionTotalSupply.partitionedCheckpoints[partitions[i]].push
       (Checkpoint({checkpointId: currentCheckpointId, value: totalSupplyForPartition}));
     }
