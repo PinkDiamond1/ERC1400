@@ -992,6 +992,12 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
       IERC1400TokensSender(senderImplementation).tokensToTransfer(msg.sig, partition, operator, from, to, value, data, operatorData);
     }
 
+    address checkpointsImplementation;
+    checkpointsImplementation = interfaceAddr(address(this), ERC1400_TOKENS_CHECKPOINTS);
+    if (checkpointsImplementation != address(0)) {
+      IERC1400TokensSender(checkpointsImplementation).tokensToTransfer(msg.sig, partition, operator, from, to, value, data, operatorData);
+    }
+
     address validatorImplementation;
     validatorImplementation = interfaceAddr(address(this), ERC1400_TOKENS_VALIDATOR);
     if (validatorImplementation != address(0)) {
@@ -1102,6 +1108,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   )
     internal
   {
+    _callPreTransferHooks(toPartition, operator, address(0), to, value, data, "");
     _issue(operator, to, value, data);
     _addTokenToPartition(to, toPartition, value);
 

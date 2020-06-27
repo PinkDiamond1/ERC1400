@@ -138,21 +138,26 @@ contract ERC1400TokensValidatorSTE is
     if (data32 == transferRevert) {
       return false;
     }
-
+    address[2] memory arr =  [from, to];
     if(_functionRequiresValidation(functionSig)) {
-      if(_whitelistActivated) {
-        if(!isWhitelisted(from) || !isWhitelisted(to)) {
-          // Need to check flags and expirys
-          return false;
+      for(uint i = 0; i<arr.length; i++){
+        if(arr[i] == address(0)){
+          // If the address is 0, it is an issuance or redemption, is not kyc address
+          break;
         }
-      }
-      if(_blacklistActivated) {
-        if(isBlacklisted(from) || isBlacklisted(to)) {
-          return false;
+        if(_whitelistActivated) {
+          if(!isWhitelisted(arr[i])) {
+            // Need to check flags and expirys
+            return false;
+          }
+        }
+        if(_blacklistActivated) {
+          if(isBlacklisted(arr[i])) {
+            return false;
+          }
         }
       }
     }
-
     return true;
   }
 
