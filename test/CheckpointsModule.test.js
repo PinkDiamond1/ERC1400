@@ -719,7 +719,17 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
              assert.equal(newCheckpointId10, 10);
          });
 
-         it('can remove the scheduled checkpoint, such that there will be no checkpoint 11 created by updating', async function () {
+         it('can create checkpoint 11', async function () {
+             await advanceTimeAndBlock(60 * 60 * 24); // Go 24 hours into the future
+
+             // Update the checkpoint manually instead of relying on a user transfer
+             await this.checkpointModule.updateAll({from: controller});
+
+             const newCheckpointId11 = await this.checkpointModule.currentCheckpointId();
+             assert.equal(newCheckpointId11, 11);
+         });
+
+         it('can remove the scheduled checkpoint, such that there will be no checkpoint 12 created by updating', async function () {
              await this.checkpointModule.removeSchedule(defaultSchedule, {from: controller});
 
              await advanceTimeAndBlock(60 * 60 * 24); // Go 24 hours into the future
@@ -727,8 +737,8 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
              // Update the checkpoint manually - but there will be no change with schedules
              await this.checkpointModule.updateAll({from: controller});
 
-             const newCheckpointIdStill10 = await this.checkpointModule.currentCheckpointId();
-             assert.equal(newCheckpointIdStill10, 10);
+             const newCheckpointIdStill11 = await this.checkpointModule.currentCheckpointId();
+             assert.equal(newCheckpointIdStill11, 11);
          });
      });
     });
