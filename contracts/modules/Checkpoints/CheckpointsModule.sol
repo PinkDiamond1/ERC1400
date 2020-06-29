@@ -490,7 +490,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
     if (_isScheduleActive(schedule.createNextCheckpointAt, schedule.endTime)) {
       uint256 newCheckpointId = _createCheckpoint();
       schedule.checkpointIds.push(newCheckpointId);
-      // Checkpoint is already been create in the above two lines now `createNextCheckpointAt` treated as `lastCheckpointCreatedAt`
+      // Checkpoint has already been created in the above two lines now `createNextCheckpointAt` treated as `lastCheckpointCreatedAt`
       uint256 lastCheckpointCreatedAt = schedule.createNextCheckpointAt;
       schedule.timestamps.push(lastCheckpointCreatedAt);
       uint256 periods;
