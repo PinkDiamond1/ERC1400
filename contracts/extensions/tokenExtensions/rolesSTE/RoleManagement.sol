@@ -11,12 +11,14 @@ contract RoleManagement is AdminRole {
     using Roles for Roles.Role;
 
     struct KYCValidity {
+        bool added;
         uint256 canSendAfter;
         uint256 canReceiveAfter;
         uint256 kycExpiredAfter;
     }
 
     mapping(address => KYCValidity) public kycValidityMap;
+    address[] public kycAddedUsers;
 
     event WhitelistedInvestorAdded(address indexed account);
     event WhitelistedInvestorRemoved(address indexed account);
@@ -89,6 +91,11 @@ contract RoleManagement is AdminRole {
 
     // KYC expiry and valid timings (UTC)
     function addKycValidTimes(address _account, uint256 _canSendAfter, uint256 _canReceiveAfter, uint256 _kycExpiredAfter) public onlyAdmin {
+        // If this user has not been added previously, add it in to the kyc users
+        if(kycValidityMap[_account].added == false){
+            kycAddedUsers.push(_account);
+            kycValidityMap[_account].added = true;
+        }
         kycValidityMap[_account].canSendAfter = _canSendAfter;
         kycValidityMap[_account].canReceiveAfter = _canReceiveAfter;
         kycValidityMap[_account].kycExpiredAfter = _kycExpiredAfter;
