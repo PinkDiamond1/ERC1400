@@ -2,12 +2,13 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/access/Roles.sol";
 import "./AdminRole.sol";
+import "./IKycAddedUsers.sol";
 
 /**
  * @title RoleManagement
  * @dev Role Management for different investor types in the security token ecosystem
  */
-contract RoleManagement is AdminRole {
+contract RoleManagement is AdminRole, IKycAddedUsers {
     using Roles for Roles.Role;
 
     struct KYCValidity {
@@ -51,6 +52,10 @@ contract RoleManagement is AdminRole {
     constructor(address owner) public
     AdminRole(owner)
     {
+    }
+
+    function getKycAddedUsers() external view returns(address[] memory users){
+        return kycAddedUsers;
     }
 
     function getBoolean(uint256 _packedBools, uint256 _boolNumber)

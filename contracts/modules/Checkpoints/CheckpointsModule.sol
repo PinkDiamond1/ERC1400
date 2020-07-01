@@ -161,7 +161,15 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
 
 
   /**
-   * @notice Creates a checkpoint that can be used to query historical balances / totalSuppy
+   * @notice Gets current checkpoint id
+   * @return uint256
+   */
+  function getCurrentCheckpointId() external view returns(uint256) {
+    return currentCheckpointId;
+  }
+
+  /**
+   * @notice Creates a checkpoint that can be used to query historical balances / totalSupply
    * @return uint256
    */
   function createCheckpoint() external withControllerPermission returns(uint256) {
@@ -169,7 +177,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
   }
 
     /**
-     * @notice Creates a checkpoint that can be used to query historical balances / totalSuppy
+     * @notice Creates a checkpoint that can be used to query historical balances / totalSupply
      * @return uint256
      */
   function _createCheckpoint() internal returns(uint256) {

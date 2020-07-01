@@ -7,6 +7,7 @@ const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 const CheckpointsModule = artifacts.require('CheckpointsModule');
+const DividendsModule = artifacts.require('DividendsModule');
 const ERC1400TokensChecker = artifacts.require('ERC1400TokensCheckerSTE');
 const MultipleIssuanceModule = artifacts.require('MultipleIssuanceModule');
 
@@ -15,11 +16,13 @@ const TokensValidatorFactory = artifacts.require('TokensValidatorFactory');
 const TokensCheckerFactory = artifacts.require('TokensCheckerFactory');
 const MultipleIssuanceModuleFactory = artifacts.require('MultipleIssuanceModuleFactory');
 const CheckpointsModuleFactory = artifacts.require('CheckpointsModuleFactory');
+const DividendsModuleFactory = artifacts.require('DividendsModuleFactory');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR_STRING = 'ERC1400TokensValidator';
 const ERC1400_TOKENS_CHECKER_STRING = 'ERC1400TokensChecker';
 const ERC1400_TOKENS_CHECKPOINTS_STRING = 'ERC1400TokensCheckpoints';
+const ERC1400_TOKENS_DIVIDENDS_STRING = 'ERC1400TokensDividends';
 const ERC1400_MULTIPLE_ISSUANCE_STRING = 'ERC1400MultipleIssuance';
 const ERC1400_INTERFACE_NAME_STRING = 'ERC1400Token';
 
@@ -27,12 +30,14 @@ const ERC1400_TOKENS_VALIDATOR = '0x45524331343030546f6b656e7356616c696461746f72
 const ERC1400_TOKENS_CHECKER = '0x45524331343030546f6b656e73436865636b6572000000000000000000000000';
 const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6365000000000000000000';
 const ERC1400_TOKENS_CHECKPOINTS = '0x45524331343030546f6b656e73436865636b706f696e7473a000000000000000';
+const ERC1400_TOKENS_DIVIDENDS = '0x45524331343030546f6b656e73436865636b706f696e74732000000000000000';
 
 const protocolNames =
     [ERC1400_MULTIPLE_ISSUANCE,
         ERC1400_TOKENS_VALIDATOR,
         ERC1400_TOKENS_CHECKER,
-        ERC1400_TOKENS_CHECKPOINTS
+        ERC1400_TOKENS_CHECKPOINTS,
+        ERC1400_TOKENS_DIVIDENDS
     ];
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -67,11 +72,12 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
       this.mimContractFactory = await MultipleIssuanceModuleFactory.new({ from: owner });
       this.checkpointsContractFactory = await CheckpointsModuleFactory.new({ from: owner });
+        this.dividendsContractFactory = await DividendsModuleFactory.new({ from: owner });
       this.validatorContractFactory = await TokensValidatorFactory.new({ from: owner });
       this.checkerContractFactory = await TokensCheckerFactory.new({ from: owner });
 
       const factories = [this.mimContractFactory.address,
-          this.validatorContractFactory.address, this.checkerContractFactory.address, this.checkpointsContractFactory.address];
+          this.validatorContractFactory.address, this.checkerContractFactory.address, this.checkpointsContractFactory.address, this.dividendsContractFactory.address];
 
       this.modulesDeployer = await ModulesDeployer.new(protocolNames, factories, 0, 0, 1, {from:owner});
 
@@ -114,6 +120,13 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
           this.checkpointModule = await CheckpointsModule.at(this.deployedModules[3]);
 
+          // Deploy dividend related module
+          const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules
+          (0,
+              [protocolNames[4]]);
+
+          this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
+          this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
 
       this.newSecurityToken = await this.steRegistryV1
       .generateNewSecurityToken(
