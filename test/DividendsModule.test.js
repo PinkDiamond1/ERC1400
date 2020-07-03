@@ -180,7 +180,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
                 thisTokenName,
                 thisTokenTicker,
                 1,
-                [controller],
+                [controller, this.dividendModule.address], // Dividend module needs to be included as controller as wells
                 //controller,
                 //true,
                 partitions,
@@ -214,16 +214,17 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         const futureTime = Math.round(new Date(2040,0).getTime()/1000);
         // Using bitwise OR to send what roles I want to the contract
         await this.validatorContract.addRolesMulti(
-            [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
+            [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted, this.dividendModule.address],
             [whitelistBytes | eligibleBytes,
                 whitelistBytes | friendsFamilyBytes,
                 whitelistBytes | accreditedBytes,
                 whitelistBytes | dealerAdvised,
                 whitelistBytes,
-                blacklistBytes | friendsFamilyBytes],
-            Array(6).fill(currentTime),
-            Array(6).fill(currentTime),
-            Array(6).fill(futureTime),
+                blacklistBytes | friendsFamilyBytes,
+                whitelistBytes],
+            Array(7).fill(currentTime),
+            Array(7).fill(currentTime),
+            Array(7).fill(futureTime),
             {from: owner});
 
     });
@@ -742,7 +743,15 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(newCheckpointId9, 9);
          });
 
-         it('can create checkpoint 10', async function () {
+         it('can issue some controller tokens, create checkpoint 10 and create a dividend', async function () {
+             await this.multiIssuanceModule.issueByPartitionMultiple(
+                 [defaultExemption],
+                 [partition1],
+                 [controller],
+                 [100000],
+                 VALID_CERTIFICATE,
+                 {from: controller});
+
              await advanceTimeAndBlock(60 * 60 * 24); // Go 24 hours into the future
 
              // Update the checkpoint manually instead of relying on a user transfer
@@ -750,6 +759,12 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
 
              const newCheckpointId10 = await this.checkpointModule.currentCheckpointId();
              assert.equal(newCheckpointId10, 10);
+
+             let maturityTime = (await currentTime() + 1000);
+             let expiryTime = (await currentTime()) + (60 * 60 * 120); // Should stop after 120 hours (5 days)
+
+             const createDiv = await this.dividendModule.createDividendWithCheckpointAndExclusions(
+                 partition1, maturityTime, expiryTime, this.newcontractAddress, 100000, 10, [], { from:controller });
          });
 
          it('can create checkpoint 11', async function () {

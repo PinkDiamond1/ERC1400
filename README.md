@@ -295,7 +295,7 @@ $ yarn truffle migrate --network ropsten
 ```
 
 
-### EXTRA STEPS FOR THIS FORK
+### RECOMMENDATIONS FOR THIS FORK
 How to run the tests
 Run ganache:
 ```
@@ -314,12 +314,17 @@ yarn build:ERC1400
 yarn build:ERC1400TokensValidator
 ```
 
+Migrating on Locally
+```
+truffle migrate
+```
+
 Migrating on Kovan
 ```
 truffle migrate --network kovan --reset
 ```
 
-After running the Kovan script you can verify a contract (i.e. STERegistryV1 as such):
+After running the Kovan script you can verify a contract with truffle verify if you wish (i.e. STERegistryV1 as such):
 
 ```
 truffle run verify STERegistryV1 --network kovan
@@ -327,10 +332,10 @@ truffle run verify STERegistryV1 --network kovan
 
 To get a compiled bytescode and ABI, you could use this method for the standard toekns
 Copy the output of ERC1400ERC20 and/or ERC1400TokensValidator into Remix https://remix.ethereum.org
-Compile it with the version and mostly default settings, *plus the optimization option enabled*
+Compile it with the version and mostly default settings, *plus the optimization option enabled for large contracts*
 From here you can use the solidity compiler tab to get an abi and bytecode you can copy into another project to interact
 You can also test deploying the contract, or using the compiled contract to communicate to the contract using the Deploy & Run Transactions panel
-*Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400ERC20.
+*Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400.
 
 OR just migrate normally as above and run truffle verify and everything will be on etherscan
 
