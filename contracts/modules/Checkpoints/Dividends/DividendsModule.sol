@@ -287,12 +287,10 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Issuer can push dividends to provided addresses
-   * @param _partition
    * @param _dividendIndex Dividend to push
    * @param _payees Addresses to which to push the dividend
    */
   function pushDividendPaymentToAddresses(
-    bytes32 _partition,
     uint256 _dividendIndex,
     address payable[] memory _payees
   )
@@ -303,20 +301,18 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     Dividend storage dividend = dividends[_dividendIndex];
     for (uint256 i = 0; i < _payees.length; i++) {
       if ((!dividend.claimed[_payees[i]]) && (!dividend.dividendExcluded[_payees[i]])) {
-        _payDividend(_partition, _payees[i], dividend, _dividendIndex);
+        _payDividend(_payees[i], dividend, _dividendIndex);
       }
     }
   }
 
   /**
    * @notice Issuer can push dividends using the investor list from the security token
-   * @param _partition
    * @param _dividendIndex Dividend to push
    * @param _start Index in investor list at which to start pushing dividends
    * @param _end Index in investor list at which to stop pushing dividends
    */
   function pushDividendPayment(
-    bytes32 _partition,
     uint256 _dividendIndex,
     uint256 _start,
     uint256 _end
@@ -329,45 +325,43 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 checkpointId = dividend.checkpointId;
 
-    address[] memory investors = getInvestorsSubsetAt(_partition, checkpointId, _start, _end);
+    address[] memory investors = getInvestorsSubsetAt(dividend.partition, checkpointId, _start, _end);
 
     // The investors list maybe smaller than _end - _start becuase it only contains addresses that had a positive balance
     // the _start and _end used here are for the address list stored in the dataStore
     for (uint256 i = 0; i < investors.length; i++) {
       address payable payee = address(uint160(investors[i]));
       if ((!dividend.claimed[payee]) && (!dividend.dividendExcluded[payee])) {
-        _payDividend(_partition, payee, dividend, _dividendIndex);
+        _payDividend(payee, dividend, _dividendIndex);
       }
     }
   }
 
   /**
    * @notice Investors can pull their own dividends
-   * @param _partition
    * @param _dividendIndex Dividend to pull
    */
-  function pullDividendPayment(bytes32 _partition, uint256 _dividendIndex) public whenNotPaused {
+  function pullDividendPayment(uint256 _dividendIndex) public whenNotPaused {
     _validDividendIndex(_dividendIndex);
     Dividend storage dividend = dividends[_dividendIndex];
     require(!dividend.claimed[msg.sender], "Dividend already claimed");
     require(!dividend.dividendExcluded[msg.sender], "msg.sender excluded from Dividend");
-    _payDividend(_partition, msg.sender, dividend, _dividendIndex);
+    _payDividend(msg.sender, dividend, _dividendIndex);
   }
 
   /**
    * @notice Calculate amount of dividends claimable
-   * @param _partition
    * @param _dividendIndex Dividend to calculate
    * @param _payee Affected investor address
    * @return claim, withheld amounts
    */
-  function calculateDividend(bytes32 _partition, uint256 _dividendIndex, address _payee) public view returns(uint256, uint256) {
+  function calculateDividend(uint256 _dividendIndex, address _payee) public view returns(uint256, uint256) {
     require(_dividendIndex < dividends.length, "Invalid dividend");
     Dividend storage dividend = dividends[_dividendIndex];
     if (dividend.claimed[_payee] || dividend.dividendExcluded[_payee]) {
       return (0, 0);
     }
-    uint256 balance = ICheckpointsModule(getCheckpointsModule()).getValueAt(_partition, _payee, dividend.checkpointId);
+    uint256 balance = ICheckpointsModule(getCheckpointsModule()).getValueAt(dividend.partition, _payee, dividend.checkpointId);
     uint256 claim = balance.mul(dividend.amount).div(dividend.totalSupply);
     uint256 withheld = claim.mul(withholdingTax[_payee]).div(e18);
     return (claim, withheld);
@@ -471,7 +465,6 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Retrieves list of investors, their claim status and whether they are excluded
-   * @param _partition
    * @param _dividendIndex Dividend to withdraw from
    * @return address[] list of investors
    * @return bool[] whether investor has claimed
@@ -480,7 +473,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
    * @return uint256[] amount of claim (estimate if not claimeed)
    * @return uint256[] investor balance
    */
-  function getDividendProgress(bytes32 _partition, uint256 _dividendIndex) external view returns (
+  function getDividendProgress(uint256 _dividendIndex) external view returns (
     bytes32 partition,
     address[] memory investors,
     bool[] memory resultClaimed,
@@ -493,7 +486,8 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     //Get list of Investors
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 checkpointId = dividend.checkpointId;
-    investors = getInvestorsAt(_partition, checkpointId);
+    partition = dividend.partition;
+    investors = getInvestorsAt(partition, checkpointId);
     resultClaimed = new bool[](investors.length);
     resultExcluded = new bool[](investors.length);
     resultWithheld = new uint256[](investors.length);
@@ -502,13 +496,13 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     for (uint256 i; i < investors.length; i++) {
       resultClaimed[i] = dividend.claimed[investors[i]];
       resultExcluded[i] = dividend.dividendExcluded[investors[i]];
-      resultBalance[i] = ICheckpointsModule(getCheckpointsModule()).getValueAt(_partition, investors[i], dividend.checkpointId);
+      resultBalance[i] = ICheckpointsModule(getCheckpointsModule()).getValueAt(partition, investors[i], dividend.checkpointId);
       if (!resultExcluded[i]) {
         if (resultClaimed[i]) {
           resultWithheld[i] = dividend.withheld[investors[i]];
           resultAmount[i] = resultBalance[i].mul(dividend.amount).div(dividend.totalSupply).sub(resultWithheld[i]);
         } else {
-          (uint256 claim, uint256 withheld) = calculateDividend(_partition, _dividendIndex, investors[i]);
+          (uint256 claim, uint256 withheld) = calculateDividend(_dividendIndex, investors[i]);
           resultWithheld[i] = withheld;
           resultAmount[i] = claim.sub(withheld);
         }
@@ -748,19 +742,18 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Internal function for paying dividends
-   * @param _partition
    * @param _payee Address of investor
    * @param _dividend Storage with previously issued dividends
    * @param _dividendIndex Dividend to pay
    */
-  function _payDividend(bytes32 _partition, address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal {
-    (uint256 claim, uint256 withheld) = calculateDividend(_partition, _dividendIndex, _payee);
+  function _payDividend(address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal {
+    (uint256 claim, uint256 withheld) = calculateDividend(_dividendIndex, _payee);
     _dividend.claimed[_payee] = true;
     _dividend.claimedAmount = claim.add(_dividend.claimedAmount);
     uint256 claimAfterWithheld = claim.sub(withheld);
     if (claimAfterWithheld > 0) {
       // This contract is the owner of some tokens
-      IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(_partition, address(this), _payee, claimAfterWithheld, "", "");
+      IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(_dividend.partition, address(this), _payee, claimAfterWithheld, "", "");
     }
     if (withheld > 0) {
       _dividend.totalWithheld = _dividend.totalWithheld.add(withheld);
@@ -773,7 +766,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
    * @notice Issuer can reclaim remaining unclaimed dividend amounts, for expired dividends
    * @param _dividendIndex Dividend to reclaim
    */
-  function reclaimDividend(bytes32 _partition, uint256 _dividendIndex) external withControllerPermission {
+  function reclaimDividend(uint256 _dividendIndex) external withControllerPermission {
     require(_dividendIndex < dividends.length, "Invalid dividend");
     /*solium-disable-next-line security/no-block-members*/
     require(now >= dividends[_dividendIndex].expiry, "Dividend expiry in future");
@@ -781,7 +774,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     dividends[_dividendIndex].reclaimed = true;
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 remainingAmount = dividend.amount.sub(dividend.claimedAmount);
-    IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(_partition, address(this), getTreasuryWallet(), remainingAmount, "", "");
+    IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(dividend.partition, address(this), getTreasuryWallet(), remainingAmount, "", "");
     emit ERC20DividendReclaimed(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingAmount);
   }
 
@@ -789,11 +782,12 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
    * @notice Allows issuer to withdraw withheld tax
    * @param _dividendIndex Dividend to withdraw from
    */
-  function withdrawWithholding(bytes32 _partition, uint256 _dividendIndex) external withControllerPermission {
+  function withdrawWithholding(uint256 _dividendIndex) external withControllerPermission {
     require(_dividendIndex < dividends.length, "Invalid dividend");
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 remainingWithheld = dividend.totalWithheld.sub(dividend.totalWithheldWithdrawn);
     dividend.totalWithheldWithdrawn = dividend.totalWithheld;
+    IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(dividend.partition, address(this), getTreasuryWallet(), remainingWithheld, "", "");
     emit ERC20DividendWithholdingWithdrawn(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingWithheld);
   }
 }
