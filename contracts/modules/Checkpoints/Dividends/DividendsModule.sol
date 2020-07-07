@@ -166,7 +166,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
  * @param _checkpointId Checkpoint id at which investor list is to be populated
  * @return list of investors
  */
-  function getInvestorsAt(bytes32 _partition, uint256 _checkpointId) internal view returns (address[] memory holdingInvestors) {
+  function getInvestorsAt(bytes32 _partition, uint256 _checkpointId) public view returns (address[] memory holdingInvestors) {
     uint256 count;
     uint256 i;
     address[] memory investors = IKycAddedUsers(getValidatorModule()).getKycAddedUsers();
@@ -211,7 +211,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
   function getInvestorsSubsetAt(bytes32 _partition, uint256 _checkpointId, uint256 _start, uint256 _end) internal view returns(address[] memory holdingInvestorsInSubset) {
     uint256 count;
     uint256 i;
-    address[] memory investors = getAddressArrayElements(IKycAddedUsers(getValidatorModule()).getKycAddedUsers(), _start, _end);
+    address[] memory investors = IKycAddedUsers(getValidatorModule()).getKycAddedUsers();
     for (i = 0; i < investors.length; i++) {
       if (ICheckpointsModule(getCheckpointsModule()).getValueAt(_partition, investors[i], _checkpointId) > 0) {
         count++;
@@ -227,7 +227,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
         count++;
       }
     }
-    return holders;
+    return getAddressArrayElements(holders, _start, _end);
   }
 
   // Not sure if needed yet
@@ -362,6 +362,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
       return (0, 0);
     }
     uint256 balance = ICheckpointsModule(getCheckpointsModule()).getValueAt(dividend.partition, _payee, dividend.checkpointId);
+    // TODO Value is rounded on the blockchain, could lose significant figures without float, need to figure that out.
     uint256 claim = balance.mul(dividend.amount).div(dividend.totalSupply);
     uint256 withheld = claim.mul(withholdingTax[_payee]).div(e18);
     return (claim, withheld);

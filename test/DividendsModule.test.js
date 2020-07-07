@@ -638,7 +638,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              const partition1ValueAt6 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 6);
              assert.equal(partition1ValueAt6, issuanceAmount * 10);
              const partition1ValueAt7 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 7);
-             assert.equal(partition1ValueAt6, issuanceAmount * 10);
+             assert.equal(partition1ValueAt7, issuanceAmount * 10);
 
              const partition2ValueAt4 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 4);
              assert.equal(partition2ValueAt4, issuanceAmount * 8);
@@ -748,12 +748,12 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(newCheckpointId9, 9);
          });
 
-         it('can issue some controller tokens, create checkpoint 10 and create a dividend', async function () {
+         it('can issue some controller tokens, create checkpoint 10', async function () {
              await this.multiIssuanceModule.issueByPartitionMultiple(
-                 [defaultExemption],
-                 [partition1],
-                 [controller],
-                 [issuanceAmount],
+                 [defaultExemption, defaultExemption],
+                 [partition1, partition2],
+                 [controller, controller],
+                 [issuanceAmount, issuanceAmount],
                  VALID_CERTIFICATE,
                  {from: controller});
 
@@ -765,15 +765,18 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              const newCheckpointId10 = await this.checkpointModule.currentCheckpointId();
              assert.equal(newCheckpointId10, 10);
 
-             let maturityTime = (await currentTime() + 1000);
-             let expiryTime = (await currentTime()) + (60 * 60 * 120); // Should stop after 120 hours (5 days)
+         });
+
+         it('can create a partition1 dividend', async function () {
+             this.dividendMaturityTime = (await currentTime() + 1000);
+             this.dividendExpiryTime = (await currentTime()) + (60 * 60 * 120); // Should stop after 120 hours (5 days)
 
              const partition1ValueAt10 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 10);
              const partition1SupplyValueAt10Value = issuanceAmount * 13;
              assert.equal(partition1ValueAt10, partition1SupplyValueAt10Value);
 
              const createDivPartition1 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
-                 partition1, maturityTime, expiryTime, this.newcontractAddress, issuanceAmount, 10, [], {from: controller});
+                 partition1, this.dividendMaturityTime, this.dividendExpiryTime, this.newcontractAddress, issuanceAmount, 10, [], {from: controller});
 
              this.divIndexPartition1Checkpoint10 = createDivPartition1.logs[0].args._dividendIndex;
 
@@ -785,19 +788,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              checkpointData.balances.map((x, index) => {
                  assert.equal(x.toNumber(), issuanceAmounts[index])
              });
-
-             // Get data about all dividends
-             const divInfo = await this.dividendModule.getDividendsData();
-             divInfo.maturitys.map((x) => {
-                 assert.equal(x.toNumber(), maturityTime)
-             });
-             divInfo.amounts.map((x) => {
-                 assert.equal(x.toNumber(), issuanceAmount)
-             });
-             divInfo.claimedAmounts.map((x) => {
-                 assert.equal(x.toNumber(), 0)
-             });
-             assert.equal(divInfo.partitions[0], partition1);
 
              // Get data about a dividend index in question
              const divProgress = await this.dividendModule.getDividendProgress(this.divIndexPartition1Checkpoint10);
@@ -811,7 +801,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              divProgress.resultWithheld.map((x) => {
                  assert.equal(x, 0)
              });
-             // TODO Value is rounded on the blockchain, could lose significant figures without float, need to figure that out.
              divProgress.resultAmount.map((x, index) => {
                  assert.equal(x,
                      Math.floor(((issuanceAmounts[index] / partition1SupplyValueAt10Value) * issuanceAmount), 0)
@@ -827,18 +816,80 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              await holdersPartition1.map(async x => {
                  assert.equal(await this.dividendModule.isClaimed(x, this.divIndexPartition1Checkpoint10), false)
              })
+         });
+
+         it('can create a partition2 dividend', async function () {
+             const partition2ValueAt10 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition2, 10);
+             const partition2SupplyValueAt10Value = issuanceAmount * 13;
+             assert.equal(partition2ValueAt10, partition2SupplyValueAt10Value);
+
+             const createDivPartition2 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
+                 partition2, this.dividendMaturityTime, this.dividendExpiryTime, this.newcontractAddress, issuanceAmount, 10, [], {from: controller});
+
+             this.divIndexPartition2Checkpoint10 = createDivPartition2.logs[0].args._dividendIndex;
+
+             // Get back dividends information and check all dividends code
+             const checkpointData = await this.dividendModule.getCheckpointData(partition2, 10);
+             const holdersPartition2 = [randomTokenHolder2, controller, this.dividendModule.address];
+             assert.equal(checkpointData.investors.toString(), holdersPartition2.toString());
+             const issuanceAmounts = [issuanceAmount * 12, issuanceAmount, issuanceAmount];
+             checkpointData.balances.map((x, index) => {
+                 assert.equal(x.toNumber(), issuanceAmounts[index])
+             });
+
+             // Get data about a dividend index in question
+             const divProgress = await this.dividendModule.getDividendProgress(this.divIndexPartition2Checkpoint10);
+             assert.equal(divProgress.investors.toString(), holdersPartition2.toString());
+             divProgress.resultClaimed.map((x) => {
+                 assert.equal(x, false)
+             });
+             divProgress.resultExcluded.map((x) => {
+                 assert.equal(x, false)
+             });
+             divProgress.resultWithheld.map((x) => {
+                 assert.equal(x, 0)
+             });
+             divProgress.resultAmount.map((x, index) => {
+                 assert.equal(x,
+                     Math.floor(((issuanceAmounts[index] / partition2SupplyValueAt10Value) * issuanceAmount), 0)
+                 )
+             });
+             divProgress.resultBalance.map((x, index) => {
+                 assert.equal(x,
+                     issuanceAmounts[index]
+                 )
+             });
+
+             // Is dividend claimed?
+             await holdersPartition2.map(async x => {
+                 assert.equal(await this.dividendModule.isClaimed(x, this.divIndexPartition2Checkpoint10), false)
+             })
+         });
+
+         it('can check info about the active dividends', async function () {
+             // Get data about all dividends
+             const divInfo = await this.dividendModule.getDividendsData();
+             divInfo.maturitys.map((x) => {
+                 assert.equal(x.toNumber(), this.dividendMaturityTime)
+             });
+             divInfo.amounts.map((x) => {
+                 assert.equal(x.toNumber(), issuanceAmount)
+             });
+             divInfo.claimedAmounts.map((x) => {
+                 assert.equal(x.toNumber(), 0)
+             });
+             assert.equal(divInfo.partitions[0], partition1);
+             assert.equal(divInfo.partitions[1], partition2);
 
          });
 
-         it('can push or pull the dividend out to investors once maturity is reached', async function () {
+         it('can push or pull the dividend out to investors once maturity is reached for partition 1', async function () {
              const partition1SupplyValueAt10Value = issuanceAmount * 13;
 
              await advanceTimeAndBlock(1000); // Move 1000 seconds into the future where dividends will reach maturity
 
              await this.dividendModule.pullDividendPayment(this.divIndexPartition1Checkpoint10, {from: tokenHolder});
              await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10, [randomTokenHolder], {from: controller});
-             // Todo test pushDividendPayment with indexing
-             // Todo test partition 2
 
              // Check token holder and random token holder for the next checkpoint value (11)
              const tokenholderPartitionedValueAfterDividend = await this.checkpointModule.getValueAt(partition1, tokenHolder, 11);
@@ -847,7 +898,46 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              const randomTokenholderPartitionedValueAfterDividend = await this.checkpointModule.getValueAt(partition1, randomTokenHolder, 11);
              assert.equal(randomTokenholderPartitionedValueAfterDividend, (issuanceAmount * 6) +
                  Math.floor(((issuanceAmount * 6)/partition1SupplyValueAt10Value) * issuanceAmount), 0); // Now dividend added
+
+             assert.equal(await this.dividendModule.isClaimed(tokenHolder, this.divIndexPartition1Checkpoint10), true)
+             assert.equal(await this.dividendModule.isClaimed(randomTokenHolder, this.divIndexPartition1Checkpoint10), true)
          });
+
+         it('can push the dividend out to investors once maturity is reached for partition 2', async function () {
+             const partition2SupplyValueAt10Value = issuanceAmount * 13;
+
+            await this.dividendModule.pushDividendPayment(this.divIndexPartition2Checkpoint10, 0, 0, {from: controller});
+            // await this.dividendModule.pullDividendPayment(this.divIndexPartition2Checkpoint10, {from: randomTokenHolder2});
+             const randomTokenholder2PartitionedValueAfterDividend = await this.checkpointModule.getValueAt(partition2, randomTokenHolder2, 11);
+             assert.equal(randomTokenholder2PartitionedValueAfterDividend, (issuanceAmount * 12) +
+                 Math.floor(((issuanceAmount * 12)/partition2SupplyValueAt10Value) * issuanceAmount), 0); // Now dividend added
+
+            assert.equal(await this.dividendModule.isClaimed(randomTokenHolder2, this.divIndexPartition2Checkpoint10), true)
+            assert.equal(await this.dividendModule.isClaimed(controller, this.divIndexPartition2Checkpoint10), false)
+            assert.equal(await this.dividendModule.isClaimed(this.dividendModule.address, this.divIndexPartition2Checkpoint10), false)
+         });
+
+         it('should revert without proper permissions (withControllerPermission)', async function () {
+             await shouldFail.reverting(this.dividendModule.createDividendWithCheckpointAndExclusions(
+                 partition1, await currentTime(), (await currentTime())+10000, this.newcontractAddress, issuanceAmount, 9, [], {from: unknown}));
+
+             await shouldFail.reverting(this.dividendModule
+                 .pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10, [controller], {from: unknown}));
+
+             await shouldFail.reverting(this.dividendModule.changeWallet(controller, {from: unknown}));
+          });
+
+         it('should successfully modify dividend dates and then revert as it is expired)', async function () {
+            await this.dividendModule.updateDividendDates(this.divIndexPartition2Checkpoint10, await currentTime(), await currentTime()+1);
+
+             await advanceTimeAndBlock(2); // Move 2 seconds into the future where dividend will now expire
+
+             await shouldFail.reverting(this.dividendModule
+                 .pushDividendPaymentToAddresses(this.divIndexPartition2Checkpoint10, [controller], {from: controller}));
+          });
+
+         // TODO  Get dividend progress about the completed dividends, again
+         // TODO  Get dividend info about the completed dividends, again
 
          it('can create checkpoint 11', async function () {
              await advanceTimeAndBlock(60 * 60 * 24); // Go 24 hours into the future
