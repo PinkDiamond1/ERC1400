@@ -325,7 +325,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 checkpointId = dividend.checkpointId;
 
-    address[] memory investors = getInvestorsSubsetAt(dividend.partition, checkpointId, _start, _end);
+    address[] memory investors = getInvestorsSubsetAt(dividend.partition, checkpointId + 1, _start, _end);
 
     // The investors list maybe smaller than _end - _start becuase it only contains addresses that had a positive balance
     // the _start and _end used here are for the address list stored in the dataStore
@@ -363,7 +363,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     }
     uint256 balance = ICheckpointsModule(getCheckpointsModule()).getValueAt(dividend.partition, _payee, dividend.checkpointId);
     // TODO Value is rounded on the blockchain, could lose significant figures without float, need to figure that out.
-    uint256 claim = balance.mul(dividend.amount).div(dividend.totalSupply);
+    uint256 claim = balance.mul(dividend.amount).div(dividend.totalSupply); // Subtract the dividend amount from total supply, as the amount is inside the module itself.
     uint256 withheld = claim.mul(withholdingTax[_payee]).div(e18);
     return (claim, withheld);
   }
@@ -488,7 +488,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 checkpointId = dividend.checkpointId;
     partition = dividend.partition;
-    investors = getInvestorsAt(partition, checkpointId);
+    investors = getInvestorsAt(partition, checkpointId + 1);
     resultClaimed = new bool[](investors.length);
     resultExcluded = new bool[](investors.length);
     resultWithheld = new uint256[](investors.length);
@@ -522,7 +522,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
   function getCheckpointData(bytes32 _partition, uint256 _checkpointId) external view returns (address[] memory investors, uint256[] memory balances, uint256[] memory withholdings) {
     require(_checkpointId <= ICheckpointsModule(getCheckpointsModule()).getCurrentCheckpointId(), "Invalid checkpoint");
 
-     investors = getInvestorsAt(_partition, _checkpointId);
+     investors = getInvestorsAt(_partition, _checkpointId + 1);
 
     balances = new uint256[](investors.length);
     withholdings = new uint256[](investors.length);
@@ -670,6 +670,9 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
   internal
   {
     require(_excluded.length <= EXCLUDED_ADDRESS_LIMIT, "Too many addresses excluded");
+    if(_excluded.length == 0){
+      _excluded = excluded;
+    }
     require(_expiry > _maturity, "Expiry before maturity");
     /*solium-disable-next-line security/no-block-members*/
     require(_expiry > now, "Expiry in past");
