@@ -1,6 +1,7 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
 const { shouldFail } = require('openzeppelin-test-helpers');
 
+const ERC20 = artifacts.require('ERC20Token');
 const ERC1400 = artifacts.require('ERC1400');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
@@ -174,6 +175,11 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
 
         this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
         this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
+
+
+        this.erc20Token = await ERC20.new({from: controller});
+        await this.erc20Token.mint(controller, issuanceAmount, {from: controller});
+        await this.erc20Token.approve(this.dividendModule.address, issuanceAmount, {from: controller});
 
         this.newSecurityToken = await this.steRegistryV1
             .generateNewSecurityToken(
@@ -461,6 +467,9 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(totalSupplyValueAt4, issuanceAmount * 12);
         });
 
+         // Create new dividend on 5th checkpoint
+         // TODO The dividend will be paid off chain
+
          it('can force transfer tokens multiple times and get through to the fourth checkpoint', async function () {
              await this.multiIssuanceModule.issueByPartitionMultiple(
                  [defaultExemption, defaultExemption, defaultExemption],
@@ -537,6 +546,19 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(totalSupplyValueAt4, issuanceAmount * 16);
              const totalSupplyValueAt5 = await this.checkpointModule.getTotalSupplyAt(5);
              assert.equal(totalSupplyValueAt5, issuanceAmount * 16);
+
+             this.dividendMaturityTime = (await currentTime());
+             this.dividendExpiryTime = (await currentTime()) + (60 * 60 * 150); // Should stop after 150 hours
+
+             const createDivERC20Partition1 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
+                 partition1, this.dividendMaturityTime, this.dividendExpiryTime, this.erc20Token.address, issuanceAmount, 4, [], {from: controller});
+
+             this.divIndexPartition1Checkpoint10WithERC20 = createDivERC20Partition1.logs[0].args._dividendIndex;
+             // TODO ERC20 balance before?
+             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10WithERC20, [randomTokenHolder], {from: controller});
+            // TODO ERC20 Balance after?
+
+             // TODO tax withholding
          });
 
          it('can create a scheduled checkpoint and move to checkpoint 5 and 6', async function () {
@@ -769,9 +791,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
          });
 
          it('can create a partition1 dividend', async function () {
-             this.dividendMaturityTime = (await currentTime() + 1000);
-             this.dividendExpiryTime = (await currentTime()) + (60 * 60 * 120); // Should stop after 120 hours (5 days)
-
              const partition1ValueAt10 = await this.checkpointModule.getPartitionedTotalSupplyAt(partition1, 10);
              const partition1SupplyValueAt10Value = issuanceAmount * 13;
              assert.equal(partition1ValueAt10, partition1SupplyValueAt10Value);
@@ -891,11 +910,16 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              divInfo.amounts.map((x) => {
                  assert.equal(x.toNumber(), issuanceAmount)
              });
-             divInfo.claimedAmounts.map((x) => {
-                 assert.equal(x.toNumber(), 0)
+             divInfo.claimedAmounts.map((x, index) => {
+                 if(index == 0){
+                     assert.equal(x.toNumber(), issuanceAmount / 2);
+                 } else {
+                     assert.equal(x.toNumber(), 0)
+                 }
              });
              assert.equal(divInfo.partitions[0], partition1);
-             assert.equal(divInfo.partitions[1], partition2);
+             assert.equal(divInfo.partitions[1], partition1);
+             assert.equal(divInfo.partitions[2], partition2);
 
          });
 

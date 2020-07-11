@@ -8,6 +8,7 @@ import "../../IConfigurableModule.sol";
 import "../../Module.sol";
 import "../../../IERC1400.sol";
 import "../ICheckpointsModule.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/math/Math.sol";
 import "erc1820/contracts/ERC1820Client.sol";
@@ -229,15 +230,6 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     }
     return getAddressArrayElements(holders, _start, _end);
   }
-
-  // Not sure if needed yet
-//  /**
-//   * @notice Creates a checkpoint on the security token
-//   * @return Checkpoint ID
-//   */
-//  function createCheckpoint() public withControllerPermission returns(uint256) {
-//    return ICheckpointsModule(getCheckpointsModule()).createCheckpoint();
-//  }
 
   /**
    * @notice Function to clear and set list of excluded addresses used for future dividends
@@ -553,76 +545,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     require(_dividendIndex < dividends.length, "Invalid dividend");
     return dividends[_dividendIndex].claimed[_investor];
   }
-//
-//  /**
-//    * @notice Creates a dividend and checkpoint for the dividend
-//     * @param _partition
-//    * @param _maturity Time from which dividend can be paid
-//    * @param _expiry Time until dividend can no longer be paid, and can be reclaimed by issuer
-//    * @param _token Address of ERC20 token in which dividend is to be denominated
-//    * @param _amount Amount of specified token for dividend
-//    */
-//  function createDividend(
-//    bytes32 _partition,
-//    uint256 _maturity,
-//    uint256 _expiry,
-//    address _token,
-//    uint256 _amount
-//  )
-//  external
-//  withControllerPermission
-//  {
-//    createDividendWithExclusions(_partition, _maturity, _expiry, _token, _amount, excluded);
-//  }
-//
-//  /**
-//   * @notice Creates a dividend with a provided checkpoint
-//   * @param _partition
-//   * @param _maturity Time from which dividend can be paid
-//   * @param _expiry Time until dividend can no longer be paid, and can be reclaimed by issuer
-//   * @param _token Address of ERC20 token in which dividend is to be denominated
-//   * @param _amount Amount of specified token for dividend
-//   * @param _checkpointId Checkpoint id from which to create dividends
-//   */
-//  function createDividendWithCheckpoint(
-//    bytes32 _partition,
-//    uint256 _maturity,
-//    uint256 _expiry,
-//    address _token,
-//    uint256 _amount,
-//    uint256 _checkpointId
-//  )
-//  external
-//  withControllerPermission
-//  {
-//    _createDividendWithCheckpointAndExclusions(_partition, _maturity, _expiry, _token, _amount, _checkpointId, excluded);
-//  }
-//
-//  // Assumption is we do not create checkpoints with the dividend itself- but could be done. Need to figure that out
-//  /**
-//   * @notice Creates a dividend and checkpoint for the dividend
-//    * @param _partition
-//   * @param _maturity Time from which dividend can be paid
-//   * @param _expiry Time until dividend can no longer be paid, and can be reclaimed by issuer
-//   * @param _token Address of ERC20 token in which dividend is to be denominated
-//   * @param _amount Amount of specified token for dividend
-//   * @param _excluded List of addresses to exclude
-//   */
-//  function createDividendWithExclusions(
-//    bytes32 _partition,
-//    uint256 _maturity,
-//    uint256 _expiry,
-//    address _token,
-//    uint256 _amount,
-//    address[] memory _excluded
-//  )
-//  public
-//  withControllerPermission
-//  {
-//    uint256 checkpointId = ICheckpointsModule(getCheckpointsModule()).createCheckpoint();
-//    _createDividendWithCheckpointAndExclusions(_partition, _maturity, _expiry, _token, _amount, checkpointId, _excluded);
-//  }
-//
+
   /**
    * @notice Creates a dividend with a provided checkpoint
     * @param _partition
@@ -677,9 +600,13 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     /*solium-disable-next-line security/no-block-members*/
     require(_expiry > now, "Expiry in past");
     require(_amount > 0, "No dividend sent");
-    require(_token != address(0), "Invalid token");
+    //require(_token != address(0), "Invalid token");
     require(_checkpointId <= ICheckpointsModule(getCheckpointsModule()).getCurrentCheckpointId(), "Invalid checkpoint");
+    if(_token == securityToken){
     IERC1400(_token).operatorTransferByPartition(_partition, msg.sender, address(this), _amount, "", "");
+    }  else if (_token != address(0)) {
+      require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), "insufficent allowance");
+    }
     require(_partition != bytes32(0));
     uint256 dividendIndex = dividends.length;
     uint256 currentSupply = ICheckpointsModule(getCheckpointsModule()).getPartitionedTotalSupplyAt(_partition, _checkpointId);
@@ -757,8 +684,12 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     uint256 claimAfterWithheld = claim.sub(withheld);
     if (claimAfterWithheld > 0) {
       // This contract is the owner of some tokens
-      IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(_dividend.partition, address(this), _payee, claimAfterWithheld, "", "");
-    }
+      if(dividendTokens[_dividendIndex] == securityToken){
+        IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(_dividend.partition, address(this), _payee, claimAfterWithheld, "", "");
+      }  else if (dividendTokens[_dividendIndex] != address(0)) {
+        require(IERC20(dividendTokens[_dividendIndex]).transfer(_payee, claimAfterWithheld), "transfer failed");
+      }
+       }
     if (withheld > 0) {
       _dividend.totalWithheld = _dividend.totalWithheld.add(withheld);
       _dividend.withheld[_payee] = withheld;
@@ -778,7 +709,12 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     dividends[_dividendIndex].reclaimed = true;
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 remainingAmount = dividend.amount.sub(dividend.claimedAmount);
-    IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(dividend.partition, address(this), getTreasuryWallet(), remainingAmount, "", "");
+    if(dividendTokens[_dividendIndex] == securityToken){
+      IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(dividend.partition, address(this), getTreasuryWallet(), remainingAmount, "", "");
+    }  else if (dividendTokens[_dividendIndex] != address(0)) {
+      require(IERC20(dividendTokens[_dividendIndex]).transfer(getTreasuryWallet(), remainingAmount), "transfer failed");
+    }
+
     emit ERC20DividendReclaimed(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingAmount);
   }
 
@@ -791,7 +727,11 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
     Dividend storage dividend = dividends[_dividendIndex];
     uint256 remainingWithheld = dividend.totalWithheld.sub(dividend.totalWithheldWithdrawn);
     dividend.totalWithheldWithdrawn = dividend.totalWithheld;
+    if(dividendTokens[_dividendIndex] == securityToken){
     IERC1400(dividendTokens[_dividendIndex]).operatorTransferByPartition(dividend.partition, address(this), getTreasuryWallet(), remainingWithheld, "", "");
-    emit ERC20DividendWithholdingWithdrawn(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingWithheld);
+    }  else if (dividendTokens[_dividendIndex] != address(0)) {
+      require(IERC20(dividendTokens[_dividendIndex]).transfer(getTreasuryWallet(), remainingWithheld), "transfer failed");
+    }
+      emit ERC20DividendWithholdingWithdrawn(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingWithheld);
   }
 }
