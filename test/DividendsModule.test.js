@@ -714,7 +714,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              // "Push" the payment to the token holder after a payment has been made off chain
              await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint6WithERC20, [randomTokenHolder], {from: controller});
 
-             // Randomtokenholder was paid, but token holder was not paid yet. Check that rth is claimed.
+             // RandomTokenHolder was paid, but token holder was not paid yet. Check that rth is claimed.
              const divProgress2 = await this.dividendModule.getDividendProgress(this.divIndexPartition1Checkpoint6WithERC20);
              assert.equal(divProgress2.resultClaimed[0], false)
              assert.equal(divProgress2.resultClaimed[1], true)

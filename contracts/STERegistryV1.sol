@@ -192,12 +192,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         );
 
         // We could figure out how to pass this in to contract instead..
-        bytes32[] memory hookContractNames = new bytes32[](5);
+        bytes32[] memory hookContractNames = new bytes32[](6);
         hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
         hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
         hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
         hookContractNames[3] = stringToBytes32("ERC1400TokensCheckpoints");
         hookContractNames[4] = stringToBytes32("ERC1400TokensDividends");
+        hookContractNames[5] = stringToBytes32("ERC1400TokensVoting");
 
         setArray(EXTENSION_PROTOCOLS, hookContractNames);
         set(PAUSED, false);

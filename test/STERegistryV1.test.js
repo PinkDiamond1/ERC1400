@@ -8,6 +8,7 @@ const ERC1820Registry = artifacts.require('ERC1820Registry');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 const CheckpointsModule = artifacts.require('CheckpointsModule');
 const DividendsModule = artifacts.require('DividendsModule');
+const VotingModule = artifacts.require('VotingModule');
 const ERC1400TokensChecker = artifacts.require('ERC1400TokensCheckerSTE');
 const MultipleIssuanceModule = artifacts.require('MultipleIssuanceModule');
 
@@ -17,12 +18,14 @@ const TokensCheckerFactory = artifacts.require('TokensCheckerFactory');
 const MultipleIssuanceModuleFactory = artifacts.require('MultipleIssuanceModuleFactory');
 const CheckpointsModuleFactory = artifacts.require('CheckpointsModuleFactory');
 const DividendsModuleFactory = artifacts.require('DividendsModuleFactory');
+const VotingModuleFactory = artifacts.require('VotingModuleFactory');
 
 const ERC20_INTERFACE_NAME = 'ERC20Token';
 const ERC1400_TOKENS_VALIDATOR_STRING = 'ERC1400TokensValidator';
 const ERC1400_TOKENS_CHECKER_STRING = 'ERC1400TokensChecker';
 const ERC1400_TOKENS_CHECKPOINTS_STRING = 'ERC1400TokensCheckpoints';
 const ERC1400_TOKENS_DIVIDENDS_STRING = 'ERC1400TokensDividends';
+const ERC1400_TOKENS_VOTING_STRING = 'ERC1400TokensVoting';
 const ERC1400_MULTIPLE_ISSUANCE_STRING = 'ERC1400MultipleIssuance';
 const ERC1400_INTERFACE_NAME_STRING = 'ERC1400Token';
 
@@ -31,13 +34,15 @@ const ERC1400_TOKENS_CHECKER = '0x45524331343030546f6b656e73436865636b6572000000
 const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6365000000000000000000';
 const ERC1400_TOKENS_CHECKPOINTS = '0x45524331343030546f6b656e73436865636b706f696e7473a000000000000000';
 const ERC1400_TOKENS_DIVIDENDS = '0x45524331343030546f6b656e73436865636b706f696e74732000000000000000';
+const ERC1400_TOKENS_VOTING = '0x45524331343030546f6b656e73566f74696e6700000000000000000000000000';
 
 const protocolNames =
     [ERC1400_MULTIPLE_ISSUANCE,
         ERC1400_TOKENS_VALIDATOR,
         ERC1400_TOKENS_CHECKER,
         ERC1400_TOKENS_CHECKPOINTS,
-        ERC1400_TOKENS_DIVIDENDS
+        ERC1400_TOKENS_DIVIDENDS,
+        ERC1400_TOKENS_VOTING
     ];
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -73,11 +78,12 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       this.mimContractFactory = await MultipleIssuanceModuleFactory.new({ from: owner });
       this.checkpointsContractFactory = await CheckpointsModuleFactory.new({ from: owner });
         this.dividendsContractFactory = await DividendsModuleFactory.new({ from: owner });
+        this.votingContractFactory = await VotingModuleFactory.new({ from: owner });
       this.validatorContractFactory = await TokensValidatorFactory.new({ from: owner });
       this.checkerContractFactory = await TokensCheckerFactory.new({ from: owner });
 
       const factories = [this.mimContractFactory.address,
-          this.validatorContractFactory.address, this.checkerContractFactory.address, this.checkpointsContractFactory.address, this.dividendsContractFactory.address];
+          this.validatorContractFactory.address, this.checkerContractFactory.address, this.checkpointsContractFactory.address, this.dividendsContractFactory.address, this.votingContractFactory.address];
 
       this.modulesDeployer = await ModulesDeployer.new(protocolNames, factories, 0, 0, 1, {from:owner});
 
@@ -127,6 +133,14 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
           this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
           this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
+
+          // Deploy voting module
+          const moduleDeploymentFromRegistry4 = await this.steRegistryV1.deployModules
+          (0,
+              [protocolNames[5]]);
+
+          this.deployedModules.push(moduleDeploymentFromRegistry4.logs[0].args._modules[0]);
+          this.votingModule = await VotingModule.at(this.deployedModules[5]);
 
       this.newSecurityToken = await this.steRegistryV1
       .generateNewSecurityToken(
@@ -195,6 +209,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
            assert.equal(hookImplementer3, this.multiIssuanceModule.address);
            let hookImplementer4 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_CHECKPOINTS_STRING));
            assert.equal(hookImplementer4, this.checkpointModule.address);
+           let hookImplementer5 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_DIVIDENDS_STRING));
+           assert.equal(hookImplementer5, this.dividendModule.address);
+           let hookImplementer6 = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_TOKENS_VOTING_STRING));
+           assert.equal(hookImplementer6, this.votingModule.address);
 
           const whitelistBytes = 0b1;
           const blacklistBytes = 0b1 << 1;
