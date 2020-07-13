@@ -299,7 +299,7 @@ $ yarn truffle migrate --network ropsten
 How to run the tests
 Run ganache:
 ```
-ganache-cli
+ganache-cli --allow-Unlimited-Contract-Size
 ```
 
 Run the unit tests with truffle (already globally downloaded)
@@ -350,6 +350,10 @@ Token Deployed
 https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 
 **MultipleIssuanceModuleFactory**: 0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28
+
+**VotingModuleFactory**: 
+
+**DividendsModuleFactory**: 
 
 **TokensCheckerFactory**: 0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B
 
