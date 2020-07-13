@@ -261,8 +261,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         });
 
         it('can set withholding', async function () {
-            await this.dividendModule.setWithholding([randomTokenHolder, randomTokenHolder2], [1, 2], {from: controller});
-            await this.dividendModule.setWithholdingFixed([tokenHolder], 3, {from: controller});
+            await this.dividendModule.setWithholding([randomTokenHolder], [web3.utils.toBN('50000000000000000')], {from: controller});
         });
 
         it('can set and change wallet, get treasury wallet', async function () {
@@ -467,9 +466,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(totalSupplyValueAt4, issuanceAmount * 12);
         });
 
-         // Create new dividend on 5th checkpoint
-         // TODO The dividend will be paid off chain
-
          it('can force transfer tokens multiple times and get through to the fourth checkpoint', async function () {
              await this.multiIssuanceModule.issueByPartitionMultiple(
                  [defaultExemption, defaultExemption, defaultExemption],
@@ -546,19 +542,40 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(totalSupplyValueAt4, issuanceAmount * 16);
              const totalSupplyValueAt5 = await this.checkpointModule.getTotalSupplyAt(5);
              assert.equal(totalSupplyValueAt5, issuanceAmount * 16);
+         });
 
+         it(' distributes erc20 token dividend payment on the fourth checkpoint with tax withholdings', async function () {
              this.dividendMaturityTime = (await currentTime());
              this.dividendExpiryTime = (await currentTime()) + (60 * 60 * 150); // Should stop after 150 hours
 
+             // Can create a dividend in an erc20 token
+             assert.equal(await this.erc20Token.balanceOf(controller), issuanceAmount);
+             assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), 0);
              const createDivERC20Partition1 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
                  partition1, this.dividendMaturityTime, this.dividendExpiryTime, this.erc20Token.address, issuanceAmount, 4, [], {from: controller});
 
              this.divIndexPartition1Checkpoint10WithERC20 = createDivERC20Partition1.logs[0].args._dividendIndex;
-             // TODO ERC20 balance before?
-             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10WithERC20, [randomTokenHolder], {from: controller});
-            // TODO ERC20 Balance after?
 
-             // TODO tax withholding
+             // Check the erc20 payment token was transferred to appropriate users
+             assert.equal(await this.erc20Token.balanceOf(controller), 0);
+             assert.equal(await this.erc20Token.balanceOf(randomTokenHolder), 0);
+             assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), issuanceAmount);
+
+             // Push erc20 payment token to randomtokenholder
+             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10WithERC20, [randomTokenHolder], {from: controller});
+             assert.equal(await this.erc20Token.balanceOf(randomTokenHolder), (issuanceAmount / 2)  * 0.95);
+             assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), (issuanceAmount / 2) * 1.05);
+
+             // Withdraw tax withholding in erc20 token left over by the randomtokenholder and to treasury
+             await this.dividendModule.withdrawWithholding(this.divIndexPartition1Checkpoint10WithERC20);
+             assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), (issuanceAmount / 2));
+             assert.equal(await this.erc20Token.balanceOf(treasuryWallet), (issuanceAmount / 2) * 0.05);
+
+             // Withholding has been tested, lets leave it out for other tests
+             await this.dividendModule.setWithholding([randomTokenHolder], [0], {from: controller});
+
+
+             // TODO off chain payment (address 0)
          });
 
          it('can create a scheduled checkpoint and move to checkpoint 5 and 6', async function () {

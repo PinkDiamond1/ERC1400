@@ -22,7 +22,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   event SetDefaultExcludedAddresses(address[] _excluded);
   event SetWithholding(address[] _investors, uint256[] _withholding);
-  event SetWithholdingFixed(address[] _investors, uint256 _withholding);
+  // event SetWithholdingFixed(address[] _investors, uint256 _withholding);
   event SetWallet(address indexed _oldWallet, address indexed _newWallet);
   event UpdateDividendDates(uint256 indexed _dividendIndex, uint256 _maturity, uint256 _expiry);
 
@@ -268,14 +268,14 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
    * @param _investors Addresses of investor
    * @param _withholding Withholding tax for all investors (multiplied by 10**16)
    */
-  function setWithholdingFixed(address[] memory _investors, uint256 _withholding) public withControllerPermission {
-    require(_withholding <= e18, "Incorrect withholding tax");
-    /*solium-disable-next-line security/no-block-members*/
-    emit SetWithholdingFixed(_investors, _withholding);
-    for (uint256 i = 0; i < _investors.length; i++) {
-      withholdingTax[_investors[i]] = _withholding;
-    }
-  }
+//  function setWithholdingFixed(address[] memory _investors, uint256 _withholding) public withControllerPermission {
+//    require(_withholding <= e18, "Incorrect withholding tax");
+//    /*solium-disable-next-line security/no-block-members*/
+//    emit SetWithholdingFixed(_investors, _withholding);
+//    for (uint256 i = 0; i < _investors.length; i++) {
+//      withholdingTax[_investors[i]] = _withholding;
+//    }
+//  }
 
   /**
    * @notice Issuer can push dividends to provided addresses
