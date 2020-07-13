@@ -554,7 +554,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              const createDivERC20Partition1 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
                  partition1, this.dividendMaturityTime, this.dividendExpiryTime, this.erc20Token.address, issuanceAmount, 4, [], {from: controller});
 
-             this.divIndexPartition1Checkpoint10WithERC20 = createDivERC20Partition1.logs[0].args._dividendIndex;
+             this.divIndexPartition1Checkpoint4WithERC20 = createDivERC20Partition1.logs[0].args._dividendIndex;
 
              // Check the erc20 payment token was transferred to appropriate users
              assert.equal(await this.erc20Token.balanceOf(controller), 0);
@@ -562,20 +562,17 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), issuanceAmount);
 
              // Push erc20 payment token to randomtokenholder
-             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10WithERC20, [randomTokenHolder], {from: controller});
+             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint4WithERC20, [randomTokenHolder], {from: controller});
              assert.equal(await this.erc20Token.balanceOf(randomTokenHolder), (issuanceAmount / 2)  * 0.95);
              assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), (issuanceAmount / 2) * 1.05);
 
              // Withdraw tax withholding in erc20 token left over by the randomtokenholder and to treasury
-             await this.dividendModule.withdrawWithholding(this.divIndexPartition1Checkpoint10WithERC20);
+             await this.dividendModule.withdrawWithholding(this.divIndexPartition1Checkpoint4WithERC20);
              assert.equal(await this.erc20Token.balanceOf(this.dividendModule.address), (issuanceAmount / 2));
              assert.equal(await this.erc20Token.balanceOf(treasuryWallet), (issuanceAmount / 2) * 0.05);
 
              // Withholding has been tested, lets leave it out for other tests
              await this.dividendModule.setWithholding([randomTokenHolder], [0], {from: controller});
-
-
-             // TODO off chain payment (address 0)
          });
 
          it('can create a scheduled checkpoint and move to checkpoint 5 and 6', async function () {
@@ -698,6 +695,29 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              assert.equal(totalSupplyValueAt6, issuanceAmount * 20);
              const totalSupplyValueAt7 = await this.checkpointModule.getTotalSupplyAt(7);
              assert.equal(totalSupplyValueAt7, issuanceAmount * 20);
+         });
+
+         it(' distributes an off chain dividend payment on the sixth checkpoint', async function () {
+             // Can create a dividend off chain
+             const createDivERC20Partition1 = await this.dividendModule.createDividendWithCheckpointAndExclusions(
+                 partition1, this.dividendMaturityTime, this.dividendExpiryTime, '0x0000000000000000000000000000000000000000', issuanceAmount, 6, [], {from: controller});
+
+             this.divIndexPartition1Checkpoint6WithERC20 = createDivERC20Partition1.logs[0].args._dividendIndex;
+
+             const divProgress = await this.dividendModule.getDividendProgress(this.divIndexPartition1Checkpoint6WithERC20);
+             divProgress.resultClaimed.map((x) => {
+                 assert.equal(x, false)
+             });
+
+             // Around here the payment gets made off chain
+
+             // "Push" the payment to the token holder after a payment has been made off chain
+             await this.dividendModule.pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint6WithERC20, [randomTokenHolder], {from: controller});
+
+             // Randomtokenholder was paid, but token holder was not paid yet. Check that rth is claimed.
+             const divProgress2 = await this.dividendModule.getDividendProgress(this.divIndexPartition1Checkpoint6WithERC20);
+             assert.equal(divProgress2.resultClaimed[0], false)
+             assert.equal(divProgress2.resultClaimed[1], true)
          });
 
          it('can create a scheduled checkpoint 7', async function () {
@@ -928,7 +948,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
                  assert.equal(x.toNumber(), issuanceAmount)
              });
              divInfo.claimedAmounts.map((x, index) => {
-                 if(index == 0){
+                 if(index == 0 || index == 1){
                      assert.equal(x.toNumber(), issuanceAmount / 2);
                  } else {
                      assert.equal(x.toNumber(), 0)
@@ -936,7 +956,8 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
              });
              assert.equal(divInfo.partitions[0], partition1);
              assert.equal(divInfo.partitions[1], partition1);
-             assert.equal(divInfo.partitions[2], partition2);
+             assert.equal(divInfo.partitions[2], partition1);
+             assert.equal(divInfo.partitions[3], partition2);
 
          });
 
