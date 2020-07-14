@@ -5,7 +5,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ISTEFactory.sol";
 import "./ISTERegistry.sol";
 import "./IERC1400.sol";
-import "./ISetHooks.sol";
+import "./IFetchSupplyAndHooks.sol";
 import "./storage/EternalStorage.sol";
 import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
@@ -331,7 +331,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             if(j != 1 && j != 2){
                 IConfigurableModule(_deployedModules[j]).configure(newSecurityTokenAddress);
             }
-            ISetHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
+            IFetchSupplyAndHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
         }
 
         IOwnable(newSecurityTokenAddress).transferOwnership(_owner);

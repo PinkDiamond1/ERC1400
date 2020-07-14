@@ -3,7 +3,6 @@ pragma solidity 0.5.10;
 import "../../../extensions/userExtensions/IERC1400TokensRecipient.sol";
 import "../../../extensions/tokenExtensions/rolesSTE/IKycAddedUsers.sol";
 import "../../../interface/ERC1820Implementer.sol";
-import "../../../IFetchSupply.sol";
 import "../../IConfigurableModule.sol";
 import "../../Module.sol";
 import "../../../IERC1400.sol";
@@ -163,7 +162,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
  * @notice returns an array of investors with non zero balance at a given checkpoint
- * @param _partition
+ * @param _partition the partition class for token
  * @param _checkpointId Checkpoint id at which investor list is to be populated
  * @return list of investors
  */
@@ -203,7 +202,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
        * @notice returns an array of investors with non zero balance at a given checkpoint
-        * @param _partition
+        * @param _partition the partition class for token
        * @param _checkpointId Checkpoint id at which investor list is to be populated
        * @param _start Position of investor to start iteration from
        * @param _end Position of investor to stop iteration at
@@ -505,7 +504,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Retrieves list of investors, their balances, and their current withholding tax percentage
-   * @param _partition
+   * @param _partition the partition class for token
    * @param _checkpointId Checkpoint Id to query for
    * @return address[] list of investors
    * @return uint256[] investor balances
@@ -548,7 +547,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Creates a dividend with a provided checkpoint
-    * @param _partition
+    * @param _partition the partition class for token
    * @param _maturity Time from which dividend can be paid
    * @param _expiry Time until dividend can no longer be paid, and can be reclaimed by issuer
    * @param _token Address of ERC20 token in which dividend is to be denominated
@@ -573,7 +572,7 @@ contract DividendsModule is ERC1820Client, ERC1820Implementer, Module, IConfigur
 
   /**
    * @notice Creates a dividend with a provided checkpoint
-   * @param _partition
+   * @param _partition the partition class for token
    * @param _maturity Time from which dividend can be paid
    * @param _expiry Time until dividend can no longer be paid, and can be reclaimed by issuer
    * @param _token Address of ERC20 token in which dividend is to be denominated

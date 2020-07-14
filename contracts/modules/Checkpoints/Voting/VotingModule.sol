@@ -3,7 +3,6 @@ pragma solidity 0.5.10;
 import "../../../extensions/userExtensions/IERC1400TokensRecipient.sol";
 import "../../../extensions/tokenExtensions/rolesSTE/IKycAddedUsers.sol";
 import "../../../interface/ERC1820Implementer.sol";
-import "../../../IFetchSupply.sol";
 import "../../IConfigurableModule.sol";
 import "../../Module.sol";
 import "../../../IERC1400.sol";
