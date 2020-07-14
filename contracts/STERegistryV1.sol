@@ -5,7 +5,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ISTEFactory.sol";
 import "./ISTERegistry.sol";
 import "./IERC1400.sol";
-import "./ISetHooks.sol";
+import "./IFetchSupplyAndHooks.sol";
 import "./storage/EternalStorage.sol";
 import "./libraries/Util.sol";
 import "./libraries/Encoder.sol";
@@ -192,11 +192,13 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         );
 
         // We could figure out how to pass this in to contract instead..
-        bytes32[] memory hookContractNames = new bytes32[](4);
+        bytes32[] memory hookContractNames = new bytes32[](6);
         hookContractNames[0] = stringToBytes32("ERC1400MultipleIssuance");
         hookContractNames[1] = stringToBytes32("ERC1400TokensValidator");
         hookContractNames[2] = stringToBytes32("ERC1400TokensChecker");
         hookContractNames[3] = stringToBytes32("ERC1400TokensCheckpoints");
+        hookContractNames[4] = stringToBytes32("ERC1400TokensDividends");
+        hookContractNames[5] = stringToBytes32("ERC1400TokensVoting");
 
         setArray(EXTENSION_PROTOCOLS, hookContractNames);
         set(PAUSED, false);
@@ -325,11 +327,11 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
 
         // I set hooks on all the deployed modules with their corresponding extension names
         for (uint j = 0; j<_deployedModules.length; j++){
-            // MIM or Checkpoints
-            if(j == 0 || j == 3){
+            // Checker and validator not compatible
+            if(j != 1 && j != 2){
                 IConfigurableModule(_deployedModules[j]).configure(newSecurityTokenAddress);
             }
-            ISetHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
+            IFetchSupplyAndHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
         }
 
         IOwnable(newSecurityTokenAddress).transferOwnership(_owner);

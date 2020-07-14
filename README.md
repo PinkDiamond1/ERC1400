@@ -295,11 +295,11 @@ $ yarn truffle migrate --network ropsten
 ```
 
 
-### EXTRA STEPS FOR THIS FORK
+### RECOMMENDATIONS FOR THIS FORK
 How to run the tests
 Run ganache:
 ```
-ganache-cli
+ganache-cli --allow-Unlimited-Contract-Size
 ```
 
 Run the unit tests with truffle (already globally downloaded)
@@ -314,12 +314,17 @@ yarn build:ERC1400
 yarn build:ERC1400TokensValidator
 ```
 
+Migrating on Locally
+```
+truffle migrate
+```
+
 Migrating on Kovan
 ```
 truffle migrate --network kovan --reset
 ```
 
-After running the Kovan script you can verify a contract (i.e. STERegistryV1 as such):
+After running the Kovan script you can verify a contract with truffle verify if you wish (i.e. STERegistryV1 as such):
 
 ```
 truffle run verify STERegistryV1 --network kovan
@@ -327,10 +332,10 @@ truffle run verify STERegistryV1 --network kovan
 
 To get a compiled bytescode and ABI, you could use this method for the standard toekns
 Copy the output of ERC1400ERC20 and/or ERC1400TokensValidator into Remix https://remix.ethereum.org
-Compile it with the version and mostly default settings, *plus the optimization option enabled*
+Compile it with the version and mostly default settings, *plus the optimization option enabled for large contracts*
 From here you can use the solidity compiler tab to get an abi and bytecode you can copy into another project to interact
 You can also test deploying the contract, or using the compiled contract to communicate to the contract using the Deploy & Run Transactions panel
-*Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400ERC20.
+*Important note* Remember the ERC1820 contract that is apart of migrations in the contract, is deployed on your chain before trying to deploy a ERC1400.
 
 OR just migrate normally as above and run truffle verify and everything will be on etherscan
 
@@ -344,24 +349,33 @@ Current Deployments Here-
 Token Deployed
 https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 
-**MultipleIssuanceModuleFactory**: 0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28
+**MultipleIssuanceModuleFactory**: 0x3aAEd08b227cdE3Faa5a405948b5bEB8E0d3a6a2
 
-**TokensCheckerFactory**: 0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B
+**VotingModuleFactory**: 0x99017d72BB3855eB553f202265a709889EfCC04B
 
-**TokensValidatorFactory**: 0x2Ee5CdC6eC27d8586C8337eC241752bE1e0Bd26b
+**DividendsModuleFactory**: 0xDa1b3ca62D15f60643Be67CDd9a5669ef0212D17
 
-**ModulesDeployer**: 0x1A5C1E1F5c9E1E393bAf565E5036994E8502D004
+**CheckpointsModuleFactory**: 0x7dc40053557F9D384eBEf8507CD047A0828155e1
 
-**STEFactory**: 0xF6285DBE956943864856B63C887e270D079E9eD7
+**TokensCheckerFactory**: 0x51035aEac087a21b8845B24CE920e704e0f9B4f1
 
-**STERegistryV1**: 0xEF29Bf25c6d4fC81028aEfb8126Ee63da6890193
+**TokensValidatorFactory**: 0x5Ea63c30B7D804E81E6c2A98b0BD2fc95346bA4d
+
+**ModulesDeployer**: 0x840C808EF3D3Ab9Cb4681F4C30f10f7579d64DE8
+
+**STEFactory**: 0x678bE6b31311C0D36a12195fb5593b9594d8AfD5
+
+**STERegistryV1**: 0x764D39E2497c25cfB52674A8621BC63524d32E79
 
 Parameters to deploy the ModulesDeployer above included:
 
-["0x455243313430304d756c7469706c6549737375616e6365000000000000000000","0x45524331343030546f6b656e7356616c696461746f7200000000000000000000","0x45524331343030546f6b656e73436865636b6572000000000000000000000000"]
+["0x455243313430304d756c7469706c6549737375616e6365000000000000000000","0x45524331343030546f6b656e7356616c696461746f7200000000000000000000","0x45524331343030546f6b656e73436865636b6572000000000000000000000000", "0x45524331343030546f6b656e73436865636b706f696e7473a000000000000000", "0x45524331343030546f6b656e73436865636b706f696e74732000000000000000", "0x45524331343030546f6b656e73566f74696e6700000000000000000000000000"]
 
-["0x51d7FbdeAFf1b20881b238586EB1C9E94e87ba28","0x2Ee5CdC6eC27d8586C8337eC241752bE1e0Bd26b","0x7F5bF643D853c924e72E6f8AC97BF364eEb70a9B"]
+["0x3aAEd08b227cdE3Faa5a405948b5bEB8E0d3a6a2","0x5Ea63c30B7D804E81E6c2A98b0BD2fc95346bA4d","0x51035aEac087a21b8845B24CE920e704e0f9B4f1", "0x7dc40053557F9D384eBEf8507CD047A0828155e1","0xDa1b3ca62D15f60643Be67CDd9a5669ef0212D17", "0x99017d72BB3855eB553f202265a709889EfCC04B"]
 
+How to connect to remix ide:
+
+remixd -s /Users/user/Repos/ERC1400/artifacts --remix-ide https://remix.ethereum.org
 
 ## APPENDIX
 

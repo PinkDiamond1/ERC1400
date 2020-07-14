@@ -4,7 +4,7 @@ import "./CheckpointsModule.sol";
 import "../../interface/IModuleFactory.sol";
 
 /**
- * @title Use this Multiple Issuance Module factory to deploy an instance
+ * @title Use this Checkpoints Module factory to deploy an instance
  */
 contract CheckpointsModuleFactory is IModuleFactory {
 
@@ -12,7 +12,7 @@ contract CheckpointsModuleFactory is IModuleFactory {
     event ModuleDeployed(address _newContract, address _admin);
 
     /**
-     * @notice deploys the MIM
+     * @notice deploys the Checkpoints Module
      */
     function deployModule(address _admin)
         external

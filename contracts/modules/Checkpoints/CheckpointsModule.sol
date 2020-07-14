@@ -3,7 +3,7 @@ pragma solidity 0.5.10;
 import "../../extensions/userExtensions/IERC1400TokensRecipient.sol";
 import "../../extensions/userExtensions/IERC1400TokensSender.sol";
 import "../../interface/ERC1820Implementer.sol";
-import "../../IFetchSupply.sol";
+import "../../IFetchSupplyAndHooks.sol";
 import "../IConfigurableModule.sol";
 import "../Module.sol";
 import "../../libraries/BokkyPooBahsDateTimeLibrary.sol";
@@ -161,7 +161,15 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
 
 
   /**
-   * @notice Creates a checkpoint that can be used to query historical balances / totalSuppy
+   * @notice Gets current checkpoint id
+   * @return uint256
+   */
+  function getCurrentCheckpointId() external view returns(uint256) {
+    return currentCheckpointId;
+  }
+
+  /**
+   * @notice Creates a checkpoint that can be used to query historical balances / totalSupply
    * @return uint256
    */
   function createCheckpoint() external withControllerPermission returns(uint256) {
@@ -169,7 +177,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
   }
 
     /**
-     * @notice Creates a checkpoint that can be used to query historical balances / totalSuppy
+     * @notice Creates a checkpoint that can be used to query historical balances / totalSupply
      * @return uint256
      */
   function _createCheckpoint() internal returns(uint256) {
@@ -181,10 +189,10 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
     (Checkpoint({checkpointId: currentCheckpointId, value: IERC20(securityToken).totalSupply()}));
 
     // Partitioned tokens
-    bytes32[] memory partitions = IFetchSupply(securityToken).totalPartitions();
+    bytes32[] memory partitions = IFetchSupplyAndHooks(securityToken).totalPartitions();
     for (uint i=0; i < partitions.length; i++) {
       // Fetch the balance for the current partition
-      uint256 totalSupplyForPartition = IFetchSupply(address(securityToken))
+      uint256 totalSupplyForPartition = IFetchSupplyAndHooks(address(securityToken))
       .totalSupplyByPartition(partitions[i]);
 
       // Push the new checkpoint to the partition

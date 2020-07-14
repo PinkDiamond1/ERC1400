@@ -4,6 +4,15 @@ pragma solidity 0.5.10;
  * @title Interface for a checkpoints module
  */
 interface ICheckpointsModule {
+    // What checkpoint we are currently on
+    function getCurrentCheckpointId() external view returns(uint256);
+
+//    /**
+//     * @notice Creates a checkpoint that can be used to query historical balances / totalSuppy
+//     * @return uint256
+//     */
+//    function createCheckpoint() external returns(uint256);
+
     /**
    * @notice Queries a partitioned value at a defined checkpoint
    * @param _partition is the partition we are interested in
