@@ -36,8 +36,11 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     event EligibleInvestorAdded(address indexed account);
     event EligibleInvestorRemoved(address indexed account);
 
-    event DealerAdvisedInvestorAdded(address indexed account);
-    event DealerAdvisedInvestorRemoved(address indexed account);
+    event EmployeeInvestorAdded(address indexed account);
+    event EmployeeInvestorRemoved(address indexed account);
+
+    event CorporateInvestorAdded(address indexed account);
+    event CorporateInvestorRemoved(address indexed account);
 
     uint256 internal constant ONE = uint256(1);
 
@@ -47,7 +50,8 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     Roles.Role private _friendsFamilyInvestors; // 2
     Roles.Role private _accreditedInvestors; // 3
     Roles.Role private _eligibleInvestors; // 4
-    Roles.Role private _dealerAdvisedInvestors; // 5
+    Roles.Role private _employeeInvestors; // 5
+    Roles.Role private _corporateInvestors; // 6
 
     constructor(address owner) public
     AdminRole(owner)
@@ -89,7 +93,10 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
                 addEligibleInvestor(kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(5))){
-                addDealerAdvisedInvestor(kycUsers[i]);
+                addEmployeeInvestor(kycUsers[i]);
+            }
+            if(getBoolean(flags[i], uint256(6))){
+                addCorporateInvestor(kycUsers[i]);
             }
         }
     }
@@ -263,33 +270,60 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
         emit EligibleInvestorRemoved(account);
     }
 
-
-    // DealerAdvised
-    modifier onlyDealerAdvisedInvestor() {
-        require(isDealerAdvisedInvestor(msg.sender));
+    // Employee
+    modifier onlyEmployeeInvestor() {
+        require(isEmployeeInvestor(msg.sender));
         _;
     }
 
-    function isDealerAdvisedInvestor(address account) public view returns (bool) {
-        return _dealerAdvisedInvestors.has(account);
+    function isEmployeeInvestor(address account) public view returns (bool) {
+        return _employeeInvestors.has(account);
     }
 
-    function addDealerAdvisedInvestor(address account) public onlyAdmin {
-        _addDealerAdvisedInvestor(account);
+    function addEmployeeInvestor(address account) public onlyAdmin {
+        _addEmployeeInvestor(account);
     }
 
-    function removeDealerAdvisedInvestor(address account) public onlyAdmin {
-        _removeDealerAdvisedInvestor(account);
+    function removeEmployeeInvestor(address account) public onlyAdmin {
+        _removeEmployeeInvestor(account);
     }
 
-    function _addDealerAdvisedInvestor(address account) internal {
-        _dealerAdvisedInvestors.add(account);
-        emit DealerAdvisedInvestorAdded(account);
+    function _addEmployeeInvestor(address account) internal {
+        _employeeInvestors.add(account);
+        emit EmployeeInvestorAdded(account);
     }
 
-    function _removeDealerAdvisedInvestor(address account) internal {
-        _dealerAdvisedInvestors.remove(account);
-        emit DealerAdvisedInvestorRemoved(account);
+    function _removeEmployeeInvestor(address account) internal {
+        _employeeInvestors.remove(account);
+        emit EmployeeInvestorRemoved(account);
+    }
+
+    // Corporate
+    modifier onlyCorporateInvestor() {
+        require(isCorporateInvestor(msg.sender));
+        _;
+    }
+
+    function isCorporateInvestor(address account) public view returns (bool) {
+        return _corporateInvestors.has(account);
+    }
+
+    function addCorporateInvestor(address account) public onlyAdmin {
+        _addCorporateInvestor(account);
+    }
+
+    function removeCorporateInvestor(address account) public onlyAdmin {
+        _removeCorporateInvestor(account);
+    }
+
+    function _addCorporateInvestor(address account) internal {
+        _corporateInvestors.add(account);
+        emit CorporateInvestorAdded(account);
+    }
+
+    function _removeCorporateInvestor(address account) internal {
+        _corporateInvestors.remove(account);
+        emit CorporateInvestorRemoved(account);
     }
 
 }

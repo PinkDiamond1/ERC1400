@@ -113,7 +113,8 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
         const friendsFamilyBytes = 0b1 << 2;
         const accreditedBytes = 0b1 << 3;
         const eligibleBytes = 0b1 << 4;
-        const dealerAdvised = 0b1 << 5;
+        const employeeBytes = 0b1 << 5;
+        const corporateBytes = 0b1 << 6;
 
         const currentTime = Math.floor(Date.now() / 1000);
         const futureTime = Math.round(new Date(2040,0).getTime()/1000);
@@ -124,7 +125,7 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
             [whitelistBytes | eligibleBytes,
                 whitelistBytes | friendsFamilyBytes,
                 whitelistBytes | accreditedBytes,
-                whitelistBytes | dealerAdvised,
+                whitelistBytes | employeeBytes,
                 whitelistBytes,
                 blacklistBytes | friendsFamilyBytes],
             Array(6).fill(currentTime),

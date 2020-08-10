@@ -219,7 +219,8 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           const friendsFamilyBytes = 0b1 << 2;
           const accreditedBytes = 0b1 << 3;
           const eligibleBytes = 0b1 << 4;
-          const dealerAdvised = 0b1 << 5;
+          const employeeBytes = 0b1 << 5;
+          const corporateBytes = 0b1 << 6;
 
           const currentTime = Math.floor(Date.now() / 1000);
           const futureTime = Math.round(new Date(2040,0).getTime()/1000);
@@ -230,8 +231,8 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
                 [whitelistBytes | eligibleBytes,
                  whitelistBytes | friendsFamilyBytes,
                  whitelistBytes | accreditedBytes,
-                 whitelistBytes | dealerAdvised,
-                 whitelistBytes,
+                 whitelistBytes | employeeBytes,
+                 whitelistBytes | corporateBytes,
                 blacklistBytes | friendsFamilyBytes],
                 Array(6).fill(currentTime),
                 Array(6).fill(currentTime),
@@ -249,9 +250,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           assert.equal(await this.validatorContract.isEligibleInvestor(tokenHolder), true);
           assert.equal(await this.validatorContract.isFriendsFamilyInvestor(recipient), true);
           assert.equal(await this.validatorContract.isAccreditedInvestor(randomTokenHolder), true);
-          assert.equal(await this.validatorContract.isDealerAdvisedInvestor(randomTokenHolder), false);
-          assert.equal(await this.validatorContract.isDealerAdvisedInvestor(randomTokenHolder2), true);
+          assert.equal(await this.validatorContract.isEmployeeInvestor(randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isEmployeeInvestor(randomTokenHolder2), true);
           assert.equal(await this.validatorContract.isFriendsFamilyInvestor(blacklisted), true);
+          assert.equal(await this.validatorContract.isCorporateInvestor(controller), true);
 
           // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
           await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
