@@ -27,20 +27,21 @@
     "core": "yarn run build:STERegistryV1 && yarn run build:STEFactory && yarn run build:ModulesDeployer && yarn run build:MultipleIssuanceModuleFactory && yarn run build:TokensValidatorFactory && yarn run build:TokensCheckerFactory && yarn run build:CheckpointsModuleFactory && yarn run build:DividendsModuleFactory && yarn run build:VotingModuleFactory",
     "exten": "yarn run build:ERC1400TokensValidatorSTE && yarn run build:ERC1400TokensCheckerSTE && yarn run build:MultipleIssuanceModule && yarn run build:ERC1400 && yarn run build:CheckpointsModule && yarn run build:DividendsModule && yarn run build:VotingModule",
     "all": "yarn core && yarn exten",
-    "build": "yarn run clean && yarn run build:ERC1400 && yarn run build:ERC1400TokensValidator",
+    "build:ERC1400CertificateNonce": "sol-merger \"./contracts/certificate/ERC1400CertificateNonce.sol\" ./artifacts",
+    "build:ERC1400CertificateSalt": "sol-merger \"./contracts/certificate/ERC1400CertificateSalt.sol\" ./artifacts",
+    "build:ERC1400TokensValidator": "sol-merger \"./contracts/extensions/tokenExtensions/ERC1400TokensValidator.sol\" ./artifacts",
+    "build": "yarn run clean && yarn run build:ERC1400 && yarn run build:ERC1400TokensValidator && yarn run build:ERC1400CertificateNonce && yarn run build:ERC1400CertificateSalt",
     "clean": "rm -rf artifacts",
     "coverage": "yarn truffle run coverage",
     "env": "node setup.js",
     "lint": "eslint ./migrations ./test ",
     "lint:fix": "eslint ./test ./migrations --fix",
-    "lint:sol": "solium -d .",
-    "lint:sol:fix": "solium -d . --fix",
+    "lint:sol": "solium --no-soliumignore -d .",
+    "lint:sol:fix": "solium --no-soliumignore -d . --fix",
     "lint:all": "yarn run lint && yarn run lint:sol",
     "lint:all:fix": "yarn run lint:fix && yarn run lint:sol:fix",
     "console": "truffle console",
-    "truffle": "truffle",
-    "version": "scripts/version.js",
-    "remix": "python -mwebbrowser http://localhost:8080 && ./node_modules/remix-ide/bin/remix-ide"
+    "remix": "python -mwebbrowser http://localhost:8080 && remix-ide"
   },
   "repository": {
     "type": "git",
@@ -60,7 +61,8 @@
   ],
   "author": "Gauthier Petetin <gauthierpetetin@hotmail.com>",
   "contributors": [
-    "Julien Marchand <julien.marchand4@gmail.com>"
+    "Julien Marchand <julien.marchand4@gmail.com>",
+    "Julien Tanay <julien.tanay@gmail.com>"
   ],
   "license": "Apache",
   "devDependencies": {
@@ -69,30 +71,31 @@
     "babel-preset-stage-2": "^6.18.0",
     "babel-preset-stage-3": "^6.17.0",
     "babel-register": "^6.23.0",
-    "chai": "^4.0.2",
-    "chai-as-promised": "^7.0.0",
-    "chai-bignumber": "^2.0.0",
-    "dotenv": "^4.0.0",
-    "eslint": "^4.11.0",
-    "eslint-config-standard": "^10.2.1",
-    "eslint-plugin-import": "^2.8.0",
-    "eslint-plugin-node": "^5.2.1",
-    "eslint-plugin-promise": "^3.6.0",
-    "eslint-plugin-standard": "^3.0.1",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^3.0.0",
+    "dotenv": "^8.2.0",
+    "eslint": "^7.9.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "eslint-plugin-truffle": "^0.3.1",
     "ethereumjs-testrpc-sc": "6.1.6",
     "ethereumjs-util": "^5.1.2",
     "fs-extra": "^7.0.1",
-    "ganache-cli": "^6.4.0",
-    "husky": "^1.1.3",
-    "lint-staged": "^8.0.4",
-    "openzeppelin-test-helpers": "^0.1.2",
-    "remix-ide": "^0.7.4",
+    "husky": "^4.3.0",
+    "lint-staged": "^10.4.0",
+    "@openzeppelin/test-helpers": "^0.5.6",
+    "remix-ide": "^0.10.3",
     "sol-merger": "0.1.4",
-    "solidity-coverage": "0.7.0-beta.3",
-    "solium": "^1.1.8",
+    "solidity-coverage": "0.7.10",
+    "solium": "^1.2.5",
     "solium-plugin-zeppelin": "^0.0.2"
   },
   "dependencies": {
+    "crypto": "^1.0.1",
     "erc1820": "git+https://github.com/0xjac/ERC1820#885549fe3e9f0fd22444f78532be3dce4ee8a5e2",
     "ethereumjs-wallet": "^0.6.3",
     "openzeppelin-solidity": "2.1.3",
@@ -100,19 +103,17 @@
     "truffle-hdwallet-provider": "1.0.1",
     "truffle-plugin-verify": "^0.3.10"
   },
+  "resolutions": {
+    "web3": "1.3.0"
+  },
   "husky": {
     "hooks": {
-      "pre-push": "truffle test"
+      "pre-commit": "lint-staged"
     }
   },
   "lint-staged": {
     "*.js": [
-      "eslint ./test ./migrations --fix",
-      "git add"
-    ],
-    "*.sol": [
-      "solium -d . --fix",
-      "git add"
+      "eslint --fix"
     ]
   }
 }

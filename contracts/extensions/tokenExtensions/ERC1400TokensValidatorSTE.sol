@@ -67,6 +67,7 @@ contract ERC1400TokensValidatorSTE is
    * @return 'true' if the token transfer can be validated, 'false' if not.
    */
   function canValidate(
+    address token,
     bytes4 functionSig,
     bytes32 partition,
     address operator,
@@ -80,7 +81,7 @@ contract ERC1400TokensValidatorSTE is
     view
     returns(bool)
   {
-    return(_canValidate(functionSig, partition, operator, from, to, value, data, operatorData));
+    return(_canValidate(token, functionSig, partition, operator, from, to, value, data, operatorData));
   }
 
   /**
@@ -107,7 +108,7 @@ contract ERC1400TokensValidatorSTE is
   ) // Comments to avoid compilation warnings for unused variables.
     external
   {
-    require(_canValidate(functionSig, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
+    require(_canValidate(msg.sender, functionSig, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
   }
 
   /**
@@ -115,6 +116,7 @@ contract ERC1400TokensValidatorSTE is
    * @return 'true' if the token transfer can be validated, 'false' if not.
    */
   function _canValidate(
+    address token,
     bytes4 functionSig,
     bytes32 /*partition*/,
     address /*operator*/,

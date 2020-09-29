@@ -1,5 +1,5 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
-const { shouldFail } = require('openzeppelin-test-helpers');
+const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ERC1400 = artifacts.require('ERC1400');
 const STEFactory = artifacts.require('STEFactory');
@@ -154,7 +154,7 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
               // Issue multiple controller
               await this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: controller});
               // Issue multiple from random does not work
-              await shouldFail.reverting(this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
+              await expectRevert.unspecified(this.multiIssuanceModule.issueByPartitionMultiple([defaultExemption, defaultExemption], [partition1, partition1], [recipient, tokenHolder], [issuanceAmount, issuanceAmount], VALID_CERTIFICATE, {from: unknown}))
 
               // Force transfer multiple owner
               await this.multiIssuanceModule.operatorTransferByPartitionMultiple(
@@ -177,7 +177,7 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
                   {from: controller});
 
               // Force transfer multiple from unknown does not work
-              await shouldFail.reverting(this.multiIssuanceModule.operatorTransferByPartitionMultiple(
+              await expectRevert.unspecified(this.multiIssuanceModule.operatorTransferByPartitionMultiple(
                   [partition1, partition1],
                   [recipient, tokenHolder],
                   [randomTokenHolder, randomTokenHolder],

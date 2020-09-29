@@ -613,10 +613,11 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   }
 
   /**
- * @dev Get supply for a specific partition
- * @return Total supply for the partition
- */
-  function totalSupplyByPartition(bytes32 partition) external view returns (uint256){
+   * @dev Get the total number of issued tokens for a given partition.
+   * @param partition Name of the partition.
+   * @return Total supply of tokens currently in circulation, for a given partition.
+   */
+  function totalSupplyByPartition(bytes32 partition) external view returns (uint256) {
     return _totalSupplyByPartition[partition];
   }
   /************************************************************************************************/
@@ -1107,7 +1108,9 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   )
     internal
   {
+    // Essential for checkpoints!
     _callPreTransferHooks(toPartition, operator, address(0), to, value, data, "");
+
     _issue(operator, to, value, data);
     _addTokenToPartition(to, toPartition, value);
 
@@ -1285,6 +1288,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
    */
   function _setHookContract(address validatorAddress, string memory interfaceLabel) internal {
     ERC1820Client.setInterfaceImplementation(interfaceLabel, validatorAddress);
+    _isController[validatorAddress] = true;
   }
   /************************************************************************************************/
 

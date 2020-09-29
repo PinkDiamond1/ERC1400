@@ -1,5 +1,5 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
-const { shouldFail } = require('openzeppelin-test-helpers');
+const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ERC1400 = artifacts.require('ERC1400');
 const STEFactory = artifacts.require('STEFactory');

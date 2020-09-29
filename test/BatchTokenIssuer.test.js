@@ -1,6 +1,6 @@
 const ethWallet = require("ethereumjs-wallet");
 
-const { shouldFail } = require("openzeppelin-test-helpers");
+const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const BatchTokenIssuer = artifacts.require("BatchTokenIssuer.sol");
 
@@ -124,7 +124,7 @@ contract(
         });
         describe("when the operator neither the owner of the token contract, nor a minter in the BatchTokenIssuer contract", function () {
           it("issues tokens for multiple different holders", async function () {
-            await shouldFail.reverting(
+            await expectRevert.unspecified(
               this.batchIssuer.batchIssueByPartition(
                 this.token.address,
                 this.issuancePartitions,
@@ -139,7 +139,7 @@ contract(
       describe("when tokenHoler list is not correct", function () {
         it("reverts", async function () {
           this.tokenHolders.push(unknown);
-          await shouldFail.reverting(
+          await expectRevert.unspecified(
             this.batchIssuer.batchIssueByPartition(
               this.token.address,
               this.issuancePartitions,
@@ -153,7 +153,7 @@ contract(
       describe("when values list is not correct", function () {
         it("reverts", async function () {
           this.values.push(10);
-          await shouldFail.reverting(
+          await expectRevert.unspecified(
             this.batchIssuer.batchIssueByPartition(
               this.token.address,
               this.issuancePartitions,
@@ -225,7 +225,7 @@ contract(
       });
       describe("when the caller is neither the token contract owner nor a token minter", function () {
         it("reverts", async function () {
-          await shouldFail.reverting(
+          await expectRevert.unspecified(
             this.batchIssuer.setTokenMinters(
               this.token.address,
               [tokenMinter1, tokenMinter2],

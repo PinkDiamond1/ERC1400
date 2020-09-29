@@ -1,5 +1,5 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
-const { shouldFail } = require('openzeppelin-test-helpers');
+const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ERC1400CertificateMock = artifacts.require('ERC1400CertificateMock');
 const ModulesDeployer = artifacts.require('ModulesDeployer');
@@ -69,7 +69,7 @@ contract('ModulesDeployer', function ([owner, operator, controller, controller_a
       describe('multiple issuance module', function () {
           it('cannot be initialized again', async function () {
               const factories = [this.mimContractFactory.address, this.validatorContractFactory.address, this.checkerContractFactory.address];
-              await shouldFail.reverting(this.modulesDeployer.initialize(protocolNames, factories, 0, 0, 1));
+              await expectRevert.unspecified(this.modulesDeployer.initialize(protocolNames, factories, 0, 0, 1));
           });
       });
 

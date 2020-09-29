@@ -1,5 +1,5 @@
 const { soliditySha3, fromAscii, hexToUtf8  } = require('web3-utils');
-const { shouldFail } = require('openzeppelin-test-helpers');
+const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const ERC20 = artifacts.require('ERC20Token');
 const ERC1400 = artifacts.require('ERC1400');
@@ -997,13 +997,13 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
          });
 
          it('should revert without proper permissions (withControllerPermission)', async function () {
-             await shouldFail.reverting(this.dividendModule.createDividendWithCheckpointAndExclusions(
+             await expectRevert.unspecified(this.dividendModule.createDividendWithCheckpointAndExclusions(
                  partition1, await currentTime(), (await currentTime())+10000, this.newcontractAddress, issuanceAmount, 9, [], {from: unknown}));
 
-             await shouldFail.reverting(this.dividendModule
+             await expectRevert.unspecified(this.dividendModule
                  .pushDividendPaymentToAddresses(this.divIndexPartition1Checkpoint10, [controller], {from: unknown}));
 
-             await shouldFail.reverting(this.dividendModule.changeWallet(controller, {from: unknown}));
+             await expectRevert.unspecified(this.dividendModule.changeWallet(controller, {from: unknown}));
           });
 
          it('should successfully modify dividend dates and then revert as it is expired)', async function () {
@@ -1011,7 +1011,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
 
              await advanceTimeAndBlock(2); // Move 2 seconds into the future where dividend will now expire
 
-             await shouldFail.reverting(this.dividendModule
+             await expectRevert.unspecified(this.dividendModule
                  .pushDividendPaymentToAddresses(this.divIndexPartition2Checkpoint10, [controller], {from: controller}));
 
              // Dividend expired, we can now withdraw balance that was not distributed (recipient did not claim dividend)

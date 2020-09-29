@@ -97,7 +97,7 @@ contract ERC1400TokensCheckerSTE is IERC1400TokensChecker, ERC1820Client, ERC182
 
      hookImplementation = ERC1820Client.interfaceAddr(msg.sender, ERC1400_TOKENS_VALIDATOR);
      if((hookImplementation != address(0))
-       && !IERC1400TokensValidator(hookImplementation).canValidate(functionSig, partition, operator, from, to, value, data, operatorData))
+       && !IERC1400TokensValidator(hookImplementation).canValidate(msg.sender, functionSig, partition, operator, from, to, value, data, operatorData))
        return(hex"54", "", partition); // 0x54	transfers halted (contract paused)
 
      uint256 granularity = ERC1400(msg.sender).granularity();
