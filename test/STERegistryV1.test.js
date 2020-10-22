@@ -5,6 +5,7 @@ const ERC1400 = artifacts.require('ERC1400');
 const STEFactory = artifacts.require('STEFactory');
 const STERegistryV1 = artifacts.require('STERegistryV1');
 const ERC1820Registry = artifacts.require('ERC1820Registry');
+const BatchBalanceReader = artifacts.require('BatchBalanceReader');
 const ERC1400TokensValidator = artifacts.require('ERC1400TokensValidatorSTE');
 const CheckpointsModule = artifacts.require('CheckpointsModule');
 const DividendsModule = artifacts.require('DividendsModule');
@@ -74,6 +75,8 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
   describe('deployment', function () {
     beforeEach(async function () {
       this.tokenFactory = await STEFactory.new();
+
+      this.balanceReader = await BatchBalanceReader.new({from: owner});
 
       this.mimContractFactory = await MultipleIssuanceModuleFactory.new({ from: owner });
       this.checkpointsContractFactory = await CheckpointsModuleFactory.new({ from: owner });
@@ -262,6 +265,32 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           await this.token.transferFromWithData(tokenHolder, recipient, approvedAmount, ZERO_BYTE, {from: controller}); // Invalid bytecode issues with non controller
           // Mint even more tokens!
           await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+
+          const balancesOfByPartition = await this.balanceReader.balancesOfByPartition(
+              [tokenHolder],
+              [this.token.address],
+              [partition1],
+              { from: unknown }
+          );
+
+          console.log(balancesOfByPartition);
+
+          const balancesOf = await this.balanceReader.balancesOf(
+              [tokenHolder],
+              [this.token.address],
+              { from: unknown }
+          );
+
+          console.log(balancesOf);
+
+          const totalSuppliesByPartition = await this.balanceReader.totalSuppliesByPartition(
+              [partition1],
+              [this.token.address],
+              { from: unknown }
+          );
+
+          console.log('totalSuppliesByPartition');
+          console.log(totalSuppliesByPartition);
 
           this.issuancePartitions = [];
           this.tokenHolders = [];
