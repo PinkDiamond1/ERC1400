@@ -27,6 +27,12 @@ module.exports = {
       port: 8545,
       network_id: '*', // eslint-disable-line camelcase
     },
+    test: {
+      host: "localhost",
+      port: 7545,
+      network_id: "*",
+      gasPrice: 0x01,
+    },
     ropsten: {
       provider: ropstenProvider,
       network_id: 3, // eslint-disable-line camelcase

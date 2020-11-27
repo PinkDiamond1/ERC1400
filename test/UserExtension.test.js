@@ -2,7 +2,7 @@ const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const { soliditySha3 } = require("web3-utils");
 
-const ERC1400 = artifacts.require("ERC1400CertificateMock");
+const ERC1400 = artifacts.require("ERC1400");
 const ERC1820Registry = artifacts.require("ERC1820Registry");
 
 const ERC1400TokensSender = artifacts.require("ERC1400TokensSenderMock");
@@ -63,9 +63,8 @@ contract("ERC1400 with sender and recipient hooks", function ([
         "DAU",
         1,
         [controller],
-        CERTIFICATE_SIGNER,
-        true,
-        partitions
+        partitions,
+        { from: owner }
       );
       this.registry = await ERC1820Registry.at(
         "0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24"

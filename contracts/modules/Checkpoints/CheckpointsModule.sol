@@ -93,7 +93,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
 
   // For now the tokens checkpoint cannot receive security tokens
   function canReceive(
-    bytes4 /*functionSig*/,
+    bytes calldata payload,
     bytes32 /*partition*/,
     address /*operator*/,
     address from,
@@ -110,7 +110,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
   }
 
   function tokensReceived(
-    bytes4 /*functionSig*/,
+    bytes calldata payload,
     bytes32 partition,
     address /*operator*/,
     address from,
@@ -133,7 +133,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
 
 
   function canTransfer(
-    bytes4 functionSig,
+    bytes calldata payload,
     bytes32 partition,
     address operator,
     address from,
@@ -146,7 +146,7 @@ contract CheckpointsModule is IERC1400TokensRecipient, IERC1400TokensSender, ERC
   }
 
   function tokensToTransfer(
-    bytes4 functionSig,
+    bytes calldata payload,
     bytes32 partition,
     address operator,
     address from,

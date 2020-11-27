@@ -3,14 +3,15 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-solidity/contracts/access/roles/MinterRole.sol";
 
 import "erc1820/contracts/ERC1820Client.sol";
 import "./interface/ERC1820Implementer.sol";
 
+import "./roles/MinterRole.sol";
+
 import "./IERC1400.sol";
 
-// Extensions (hooks triggered by the contract)
+// Extensions
 import "./extensions/tokenExtensions/IERC1400TokensValidator.sol";
 import "./extensions/tokenExtensions/IERC1400TokensChecker.sol";
 import "./extensions/userExtensions/IERC1400TokensSender.sol";
@@ -29,11 +30,11 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   string constant internal ERC1400_INTERFACE_NAME = "ERC1400Token";
   string constant internal ERC20_INTERFACE_NAME = "ERC20Token";
 
-  // Token extensions (hooks triggered by the contract)
+  // Token extensions
   string constant internal ERC1400_TOKENS_CHECKER = "ERC1400TokensChecker";
   string constant internal ERC1400_TOKENS_VALIDATOR = "ERC1400TokensValidator";
 
-  // User extensions (hooks triggered by the contract)
+  // User extensions
   string constant internal ERC1400_TOKENS_SENDER = "ERC1400TokensSender";
   string constant internal ERC1400_TOKENS_RECIPIENT = "ERC1400TokensRecipient";
   string constant internal ERC1400_TOKENS_CHECKPOINTS = "ERC1400TokensCheckpoints";
@@ -139,6 +140,13 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
    */
   modifier isNotMigratedToken() {
       require(!_migrated, "54"); // 0x54	transfers halted (contract paused)
+      _;
+  }
+  /**
+   * @dev Modifier to verifiy if sender is a minter.
+   */
+  modifier onlyMinter() {
+      require(isMinter(msg.sender) || isOwner());
       _;
   }
   /************************************************************************************************/
@@ -721,18 +729,20 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
     return true;
   }
   /************************************************************************************************/
-
-
-  /******************* Token extension (hooks triggered by the contract) **************************/
+  
+  /************************************** Token extension *****************************************/
   /**
-   * @dev Set validator contract address.
-   * The validator contract needs to verify "ERC1400TokensValidator" interface.
-   * Once setup, the validator will be called everytime a transfer is executed.
-   * @param validatorAddress Address of the validator contract.
-   * @param interfaceLabel Interface label of hook contract.
+   * @dev Set token extension contract address.
+   * The extension contract can for example verify "ERC1400TokensValidator" or "ERC1400TokensChecker" interfaces.
+   * If the extension is an "ERC1400TokensValidator", it will be called everytime a transfer is executed.
+   * @param extension Address of the extension contract.
+   * @param interfaceLabel Interface label of extension contract.
+   * @param removeOldExtensionRoles If set to 'true', the roles of the old extension(minter, controller) will be removed extension.
+   * @param addMinterRoleForExtension If set to 'true', the extension contract will be added as minter.
+   * @param addControllerRoleForExtension If set to 'true', the extension contract will be added as controller.
    */
-  function setHookContract(address validatorAddress, string calldata interfaceLabel) external onlyOwner {
-    _setHookContract(validatorAddress, interfaceLabel);
+  function setTokenExtension(address extension, string calldata interfaceLabel, bool removeOldExtensionRoles, bool addMinterRoleForExtension, bool addControllerRoleForExtension) external onlyOwner {
+    _setTokenExtension(extension, interfaceLabel, removeOldExtensionRoles, addMinterRoleForExtension, addControllerRoleForExtension);
   }
   /************************************************************************************************/
 
@@ -816,13 +826,14 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
       toPartition = _getDestinationPartition(fromPartition, data);
     }
 
-    _callPreTransferHooks(fromPartition, operator, from, to, value, data, operatorData);
+    _callSenderExtension(fromPartition, operator, from, to, value, data, operatorData);
+    _callTokenExtension(fromPartition, operator, from, to, value, data, operatorData);
 
     _removeTokenFromPartition(from, fromPartition, value);
     _transferWithData(from, to, value);
     _addTokenToPartition(to, toPartition, value);
 
-    _callPostTransferHooks(toPartition, operator, from, to, value, data, operatorData);
+    _callRecipientExtension(toPartition, operator, from, to, value, data, operatorData);
 
     emit TransferByPartition(fromPartition, operator, from, to, value, data, operatorData);
 
@@ -965,8 +976,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
 
   /****************************************** Hooks ***********************************************/
   /**
-   * @dev Check for 'ERC1400TokensSender' hook on the sender + check for 'ERC1400TokensValidator' on the token
-   * contract address and call them.
+   * @dev Check for 'ERC1400TokensSender' user extension in ERC1820 registry and call it.
    * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
@@ -975,7 +985,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
    * @param data Extra information.
    * @param operatorData Extra information, attached by the operator (if any).
    */
-  function _callPreTransferHooks(
+  function _callSenderExtension(
     bytes32 partition,
     address operator,
     address from,
@@ -989,23 +999,44 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
     address senderImplementation;
     senderImplementation = interfaceAddr(from, ERC1400_TOKENS_SENDER);
     if (senderImplementation != address(0)) {
-      IERC1400TokensSender(senderImplementation).tokensToTransfer(msg.sig, partition, operator, from, to, value, data, operatorData);
+      IERC1400TokensSender(senderImplementation).tokensToTransfer(msg.data, partition, operator, from, to, value, data, operatorData);
     }
 
     address checkpointsImplementation;
     checkpointsImplementation = interfaceAddr(address(this), ERC1400_TOKENS_CHECKPOINTS);
     if (checkpointsImplementation != address(0)) {
-      IERC1400TokensSender(checkpointsImplementation).tokensToTransfer(msg.sig, partition, operator, from, to, value, data, operatorData);
-    }
-
-    address validatorImplementation;
-    validatorImplementation = interfaceAddr(address(this), ERC1400_TOKENS_VALIDATOR);
-    if (validatorImplementation != address(0)) {
-      IERC1400TokensValidator(validatorImplementation).tokensToValidate(msg.sig, partition, operator, from, to, value, data, operatorData);
+      IERC1400TokensSender(checkpointsImplementation).tokensToTransfer(msg.data, partition, operator, from, to, value, data, operatorData);
     }
   }
   /**
-   * @dev Check for 'ERC1400TokensRecipient' hook on the recipient and call it.
+   * @dev Check for 'ERC1400TokensValidator' token extension in ERC1820 registry and call it.
+   * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
+   * @param operator Address which triggered the balance decrease (through transfer or redemption).
+   * @param from Token holder.
+   * @param to Token recipient for a transfer and 0x for a redemption.
+   * @param value Number of tokens the token holder balance is decreased by.
+   * @param data Extra information.
+   * @param operatorData Extra information, attached by the operator (if any).
+   */
+  function _callTokenExtension(
+    bytes32 partition,
+    address operator,
+    address from,
+    address to,
+    uint256 value,
+    bytes memory data,
+    bytes memory operatorData
+  )
+    internal
+  {
+    address validatorImplementation;
+    validatorImplementation = interfaceAddr(address(this), ERC1400_TOKENS_VALIDATOR);
+    if (validatorImplementation != address(0)) {
+      IERC1400TokensValidator(validatorImplementation).tokensToValidate(msg.data, partition, operator, from, to, value, data, operatorData);
+    }
+  }
+  /**
+   * @dev Check for 'ERC1400TokensRecipient' user extension in ERC1820 registry and call it.
    * @param partition Name of the partition (bytes32 to be left empty for transfers where partition is not specified).
    * @param operator Address which triggered the balance increase (through transfer or issuance).
    * @param from Token holder for a transfer and 0x for an issuance.
@@ -1014,7 +1045,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
    * @param data Extra information, intended for the token holder ('from').
    * @param operatorData Extra information attached by the operator (if any).
    */
-  function _callPostTransferHooks(
+  function _callRecipientExtension(
     bytes32 partition,
     address operator,
     address from,
@@ -1028,13 +1059,13 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
     address recipientImplementation;
     recipientImplementation = interfaceAddr(to, ERC1400_TOKENS_RECIPIENT);
     if (recipientImplementation != address(0)) {
-      IERC1400TokensRecipient(recipientImplementation).tokensReceived(msg.sig, partition, operator, from, to, value, data, operatorData);
+      IERC1400TokensRecipient(recipientImplementation).tokensReceived(msg.data, partition, operator, from, to, value, data, operatorData);
     }
 
     address checkpointImplementation;
     checkpointImplementation = interfaceAddr(address(this), ERC1400_TOKENS_CHECKPOINTS);
     if (checkpointImplementation != address(0)) {
-      IERC1400TokensRecipient(checkpointImplementation).tokensReceived(msg.sig, partition, operator, from, to, value, data, operatorData);
+      IERC1400TokensRecipient(checkpointImplementation).tokensReceived(msg.data, partition, operator, from, to, value, data, operatorData);
     }
   }
   /************************************************************************************************/
@@ -1108,13 +1139,14 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   )
     internal
   {
-    // Essential for checkpoints!
-    _callPreTransferHooks(toPartition, operator, address(0), to, value, data, "");
+    // This line is needed for checkpoints accounting during issuance. It is not Consensys way of doing things
+    _callSenderExtension(toPartition, operator, address(0), to, value, data, "");
 
+    _callTokenExtension(toPartition, operator, address(0), to, value, data, "");
     _issue(operator, to, value, data);
     _addTokenToPartition(to, toPartition, value);
 
-    _callPostTransferHooks(toPartition, operator, address(0), to, value, data, "");
+    _callRecipientExtension(toPartition, operator, address(0), to, value, data, "");
 
     emit IssuedByPartition(toPartition, operator, to, value, data, "");
   }
@@ -1164,7 +1196,8 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   {
     require(_balanceOfByPartition[from][fromPartition] >= value, "52"); // 0x52	insufficient balance
 
-    _callPreTransferHooks(fromPartition, operator, from, address(0), value, data, operatorData);
+    _callSenderExtension(fromPartition, operator, from, address(0), value, data, operatorData);
+    _callTokenExtension(fromPartition, operator, from, address(0), value, data, operatorData);
 
     _removeTokenFromPartition(from, fromPartition, value);
     _redeem(operator, from, value, data);
@@ -1211,7 +1244,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   /************************************** Transfer Validity ***************************************/
   /**
    * @dev Know the reason on success or failure based on the EIP-1066 application-specific status codes.
-   * @param functionSig ID of the function that needs to be called.
+   * @param payload Payload of the initial transaction.
    * @param partition Name of the partition.
    * @param operator The address performing the transfer.
    * @param from Token holder.
@@ -1225,7 +1258,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
    * transfer restriction rule responsible for making the transfer operation invalid).
    * @return Destination partition.
    */
-  function _canTransfer(bytes4 functionSig, bytes32 partition, address operator, address from, address to, uint256 value, bytes memory data, bytes memory operatorData)
+  function _canTransfer(bytes memory payload, bytes32 partition, address operator, address from, address to, uint256 value, bytes memory data, bytes memory operatorData)
     internal
     view
     returns (byte, bytes32, bytes32)
@@ -1233,7 +1266,7 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
     address checksImplementation = interfaceAddr(address(this), ERC1400_TOKENS_CHECKER);
 
     if((checksImplementation != address(0))) {
-      return IERC1400TokensChecker(checksImplementation).canTransferByPartition(functionSig, partition, operator, from, to, value, data, operatorData);
+      return IERC1400TokensChecker(checksImplementation).canTransferByPartition(payload, partition, operator, from, to, value, data, operatorData);
     }
     else {
       return(hex"00", "", partition);
@@ -1278,17 +1311,34 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   /************************************************************************************************/
 
 
-  /******************* Token extension (hooks triggered by the contract) **************************/
+  /************************************** Token extension *****************************************/
   /**
-   * @dev Set validator contract address.
-   * The validator contract needs to verify "ERC1400TokensValidator" interface.
-   * Once setup, the validator will be called everytime a transfer is executed.
-   * @param validatorAddress Address of the validator contract.
-   * @param interfaceLabel Interface label of hook contract.
+   * @dev Set token extension contract address.
+   * The extension contract can for example verify "ERC1400TokensValidator" or "ERC1400TokensChecker" interfaces.
+   * If the extension is an "ERC1400TokensValidator", it will be called everytime a transfer is executed.
+   * @param extension Address of the extension contract.
+   * @param interfaceLabel Interface label of extension contract.
+   * @param removeOldExtensionRoles If set to 'true', the roles of the old extension(minter, controller) will be removed extension.
+   * @param addMinterRoleForExtension If set to 'true', the extension contract will be added as minter.
+   * @param addControllerRoleForExtension If set to 'true', the extension contract will be added as controller.
    */
-  function _setHookContract(address validatorAddress, string memory interfaceLabel) internal {
-    ERC1820Client.setInterfaceImplementation(interfaceLabel, validatorAddress);
-    _isController[validatorAddress] = true;
+  function _setTokenExtension(address extension, string memory interfaceLabel, bool removeOldExtensionRoles, bool addMinterRoleForExtension, bool addControllerRoleForExtension) internal {
+    address oldExtension = interfaceAddr(address(this), interfaceLabel);
+
+    if (oldExtension != address(0) && removeOldExtensionRoles) {
+      if(isMinter(oldExtension)) {
+        _removeMinter(oldExtension);
+      }
+      _isController[oldExtension] = false;
+    }
+
+    ERC1820Client.setInterfaceImplementation(interfaceLabel, extension);
+    if(addMinterRoleForExtension && !isMinter(extension)) {
+      _addMinter(extension);
+    }
+    if (addControllerRoleForExtension) {
+      _isController[extension] = true;
+    }
   }
   /************************************************************************************************/
 

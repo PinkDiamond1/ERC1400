@@ -12,16 +12,13 @@
 
 const { expectRevert } = require("@openzeppelin/test-helpers");
 const { soliditySha3 } = require("web3-utils");
+const { advanceTimeAndBlock } = require("./utils/time")
 
 const FundIssuerContract = artifacts.require("FundIssuer");
-const ERC1400 = artifacts.require("ERC1400CertificateMock");
+const ERC1400 = artifacts.require("ERC1400");
 const ERC1820Registry = artifacts.require("ERC1820Registry");
-const ERC20 = artifacts.require("ERC20Token");
-const ERC721 = artifacts.require("ERC721Token");
 
 const ERC1400_TOKENS_RECIPIENT_INTERFACE = "ERC1400TokensRecipient";
-
-const FakeERC1400 = artifacts.require("FakeERC1400Mock");
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ZERO_BYTE = "0x";
@@ -154,53 +151,6 @@ const token2Amount = 400;
 const token3Amount = 400;
 const token4Amount = 10;
 const issuanceTokenId = 123456789;
-
-// ---------- Module to accelerate time -----------------------
-const advanceTime = (time) => {
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_increaseTime",
-        params: [time],
-        id: new Date().getTime(),
-      },
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(result);
-      }
-    );
-  });
-};
-
-const advanceBlock = () => {
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_mine",
-        id: new Date().getTime(),
-      },
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        const newBlockHash = web3.eth.getBlock("latest").hash;
-
-        return resolve(newBlockHash);
-      }
-    );
-  });
-};
-
-const advanceTimeAndBlock = async (time) => {
-  await advanceTime(time);
-  await advanceBlock();
-  return Promise.resolve(web3.eth.getBlock("latest"));
-};
-// ---------- Module to accelerate time (end)------------------
 
 const SECONDS_IN_A_WEEK = 86400 * 7;
 
@@ -695,11 +645,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -940,11 +888,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -1204,11 +1150,9 @@ contract("Fund issuance", function ([
       this.fic = await FundIssuerContract.new();
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -1328,11 +1272,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -1379,12 +1321,11 @@ contract("Fund issuance", function ([
               );
               this.paymentToken = await ERC1400.new(
                 "ERC1400Token",
-                "DAU20",
+                "DAU",
                 1,
                 [owner],
-                CERTIFICATE_SIGNER,
-                true,
-                partitions
+                partitions,
+                { from: tokenController1 }
               );
               const chainTime = (await web3.eth.getBlock("latest")).timestamp;
               await setAssetRules(
@@ -1525,11 +1466,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -1723,11 +1662,9 @@ contract("Fund issuance", function ([
               );
               this.asset2 = await ERC1400.new(
                 "ERC1400Token",
-                "DAU20",
+                "DAU",
                 1,
                 [owner],
-                CERTIFICATE_SIGNER,
-                true,
                 partitions,
                 { from: tokenController2 }
               );
@@ -1859,11 +1796,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -2004,11 +1939,9 @@ contract("Fund issuance", function ([
     beforeEach(async function () {
       this.asset = await ERC1400.new(
         "ERC1400Token",
-        "DAU20",
+        "DAU",
         1,
         [owner],
-        CERTIFICATE_SIGNER,
-        true,
         partitions,
         { from: tokenController1 }
       );
@@ -2183,11 +2116,9 @@ contract("Fund issuance", function ([
         it("set the valuation", async function () {
           this.asset2 = await ERC1400.new(
             "ERC1400Token",
-            "DAU20",
+            "DAU",
             1,
             [owner],
-            CERTIFICATE_SIGNER,
-            true,
             partitions,
             { from: tokenController1 }
           );

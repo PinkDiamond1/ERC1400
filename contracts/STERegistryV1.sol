@@ -331,7 +331,8 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             if(j != 1 && j != 2){
                 IConfigurableModule(_deployedModules[j]).configure(newSecurityTokenAddress);
             }
-            IFetchSupplyAndHooks(newSecurityTokenAddress).setHookContract(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]));
+            // Might be able to use some of the new token extension method to our advantage
+            IFetchSupplyAndHooks(newSecurityTokenAddress).setTokenExtension(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]), false, false, false);
         }
 
         IOwnable(newSecurityTokenAddress).transferOwnership(_owner);

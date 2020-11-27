@@ -3,9 +3,12 @@ const { expectRevert } = require("@openzeppelin/test-helpers");
 const { soliditySha3 } = require("web3-utils");
 
 const ERC1400 = artifacts.require("ERC1400");
+
 const ERC1820Registry = artifacts.require("ERC1820Registry");
 
 const FakeERC1400 = artifacts.require("FakeERC1400Mock");
+
+const MinterMock = artifacts.require("MinterMock");
 
 const ERC1820_ACCEPT_MAGIC = "ERC1820_ACCEPT_MAGIC";
 
@@ -267,6 +270,161 @@ contract("ERC1400", function ([
     });
   });
 
+  // MINTER
+  describe("minter role", function () {
+    beforeEach(async function () {
+      this.token = await ERC1400.new(
+        "ERC1400Token",
+        "DAU",
+        1,
+        [controller],
+        partitions,
+        { from: owner }
+      );
+    });
+    describe("addMinter/removeMinter", function () {
+      describe("add/renounce a minter", function () {
+        describe("when caller is a minter", function () {
+          it("adds a minter as owner", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await this.token.addMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+          });
+          it("adds a minter as minter", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await this.token.addMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+  
+            assert.equal(
+              await this.token.isMinter(tokenHolder),
+              false
+            );
+            await this.token.addMinter(tokenHolder, {
+              from: unknown,
+            });
+            assert.equal(
+              await this.token.isMinter(tokenHolder),
+              true
+            );
+          });
+          it("renounces minter", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await this.token.addMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+            await this.token.renounceMinter({
+              from: unknown,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+          });
+        });
+        describe("when caller is not a minter", function () {
+          it("reverts", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await expectRevert.unspecified(
+              this.token.addMinter(unknown, { from: unknown })
+            );
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+          });
+        });
+      });
+      describe("remove a minter", function () {
+        describe("when caller is a minter", function () {
+          it("removes a minter as owner", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await this.token.addMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+            await this.token.removeMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+          });
+        });
+        describe("when caller is not a minter", function () {
+          it("reverts", async function () {
+            assert.equal(
+              await this.token.isMinter(unknown),
+              false
+            );
+            await this.token.addMinter(unknown, {
+              from: owner,
+            });
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+            await expectRevert.unspecified(this.token.removeMinter(unknown, {
+              from: tokenHolder,
+            }));
+            assert.equal(
+              await this.token.isMinter(unknown),
+              true
+            );
+          });
+        });
+      });
+    });
+    describe("onlyMinter [mock for coverage]", function () {
+      beforeEach(async function () {
+        this.minterMock = await MinterMock.new({ from: owner });
+      });
+      describe("can not call function if not minter", function () {
+        it("reverts", async function () {
+          assert.equal(await this.minterMock.isMinter(unknown), false);
+          await expectRevert.unspecified(
+            this.minterMock.addMinter(unknown, { from: unknown })
+          );
+          assert.equal(await this.minterMock.isMinter(unknown), false);
+          await this.minterMock.addMinter(unknown, { from: owner })
+          assert.equal(await this.minterMock.isMinter(unknown), true);
+        });
+      });
+    });
+  });
+  
   // TRANSFER
 
   describe("transfer", function () {
@@ -1044,7 +1202,9 @@ contract("ERC1400", function ([
                   "DAU",
                   1,
                   [controller],
-                  partitions
+                  partitions,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
                 );
                 await this.token.issueByPartition(
                   partition1,
@@ -2525,7 +2685,9 @@ contract("ERC1400", function ([
                   "DAU",
                   1,
                   [controller],
-                  partitions
+                  partitions,
+                  ZERO_ADDRESS,
+                  ZERO_ADDRESS,
                 );
                 await issueOnMultiplePartitions(
                   this.token,
@@ -2602,7 +2764,9 @@ contract("ERC1400", function ([
               "DAU",
               1,
               [controller],
-              partitions
+              partitions,
+              ZERO_ADDRESS,
+              ZERO_ADDRESS,
             );
 
             await issueOnMultiplePartitions(

@@ -177,7 +177,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
 
 
-        this.erc20Token = await ERC20.new({from: controller});
+        this.erc20Token = await ERC20.new('ERC20Token', 'DAU', 18, {from: controller});
         await this.erc20Token.mint(controller, issuanceAmount, {from: controller});
         await this.erc20Token.approve(this.dividendModule.address, issuanceAmount, {from: controller});
 

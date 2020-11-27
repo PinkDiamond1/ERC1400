@@ -193,7 +193,7 @@ contract DVP is Ownable, ERC1820Client, IERC1400TokensRecipient, ERC1820Implemen
    * @param operatorData Information attached to the DVP transfer, by the operator.
    * @return 'true' if the DVP contract can receive the tokens, 'false' if not.
    */
-  function canReceive(bytes4, bytes32, address, address, address, uint, bytes calldata  data, bytes calldata operatorData) external view returns(bool) {
+  function canReceive(bytes calldata, bytes32, address, address, address, uint, bytes calldata  data, bytes calldata operatorData) external view returns(bool) {
     return(_canReceive(data, operatorData));
   }
 
@@ -207,7 +207,7 @@ contract DVP is Ownable, ERC1820Client, IERC1400TokensRecipient, ERC1820Implemen
    * @param data Information attached to the token transfer.
    * @param operatorData Information attached to the DVP transfer, by the operator.
    */
-  function tokensReceived(bytes4, bytes32 partition, address, address from, address to, uint value, bytes calldata data, bytes calldata operatorData) external {
+  function tokensReceived(bytes calldata, bytes32 partition, address, address from, address to, uint value, bytes calldata data, bytes calldata operatorData) external {
     require(interfaceAddr(msg.sender, "ERC1400Token") == msg.sender, "55"); // funds locked (lockup period)
 
     require(to == address(this), "50"); // 0x50	transfer failure
@@ -477,7 +477,7 @@ contract DVP is Ownable, ERC1820Client, IERC1400TokensRecipient, ERC1820Implemen
    *
    * Indeed, when a token smart contract is controlled by an owner, the owner can decide to open the
    * secondary market by:
-   *  - Whitelisting the DVP smart contract
+   *  - Allowlisting the DVP smart contract
    *  - Setting "token controllers" in the DVP smart contract, in order to approve all the trades made with his token
    *
    * @param index Index of the trade to be executed.

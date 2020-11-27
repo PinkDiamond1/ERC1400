@@ -116,7 +116,7 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
    * @param token Address of the token.
-   * @param functionSig ID of the function that is called.
+   * @param payload ID of the function that is called.
    * @param partition Name of the partition (left empty for ERC1400Raw transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
@@ -128,7 +128,7 @@ contract ERC1400TokensValidatorSTE is
    */
   function canValidate(
     address token,
-    bytes4 functionSig,
+    bytes calldata payload,
     bytes32 partition,
     address operator,
     address from,
@@ -141,12 +141,12 @@ contract ERC1400TokensValidatorSTE is
     view
     returns(bool)
   {
-    return(_canValidate(token, functionSig, partition, operator, from, to, value, data, operatorData));
+    return(_canValidate(token, payload, partition, operator, from, to, value, data, operatorData));
   }
 
   /**
    * @dev Function called by the token contract before executing a transfer.
-   * @param functionSig ID of the function that is called.
+   * @param payload ID of the function that is called.
    * @param partition Name of the partition (left empty for ERC1400Raw transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
@@ -157,7 +157,7 @@ contract ERC1400TokensValidatorSTE is
    * @return 'true' if the token transfer can be validated, 'false' if not.
    */
   function tokensToValidate(
-    bytes4 functionSig,
+    bytes calldata payload,
     bytes32 partition,
     address operator,
     address from,
@@ -168,7 +168,7 @@ contract ERC1400TokensValidatorSTE is
   ) // Comments to avoid compilation warnings for unused variables.
     external
   {
-    require(_canValidate(msg.sender, functionSig, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
+    require(_canValidate(msg.sender, payload, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
   }
 
   /**
@@ -177,7 +177,7 @@ contract ERC1400TokensValidatorSTE is
    */
   function _canValidate(
     address token,
-    bytes4 functionSig,
+    bytes memory payload,
     bytes32 partition,
     address /*operator*/,
     address from,
@@ -196,7 +196,7 @@ contract ERC1400TokensValidatorSTE is
       return true;
     }
 
-    if(_functionRequiresValidation(functionSig)) {
+    if(_functionRequiresValidation(payload)) {
       if(_whitelistActivated) {
         if(!isWhitelisted(from) || !isWhitelisted(to)) {
           return false;
@@ -220,10 +220,11 @@ contract ERC1400TokensValidatorSTE is
 
   /**
    * @dev Check if validator is activated for the function called in the smart contract.
-   * @param functionSig ID of the function that is called.
+   * @param payload ID of the function that is called.
    * @return 'true' if the function requires validation, 'false' if not.
    */
-  function _functionRequiresValidation(bytes4 functionSig) internal pure returns(bool) {
+  function _functionRequiresValidation(bytes memory payload) internal pure returns(bool) {
+    bytes4 functionSig = _getFunctionSig(payload);
   // Here we define specific functions on the ERC1400 contract that require whitelisting of users.
     if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID)
           || areEqual(functionSig, ERC20_TRANSFERFROM_FUNCTION_ID)
@@ -237,6 +238,15 @@ contract ERC1400TokensValidatorSTE is
       return false;
     }
   //return true;
+  }
+
+  /**
+   * @dev Extract function signature from payload.
+   * @param payload Payload of the initial transaction.
+   * @return Function signature.
+   */
+  function _getFunctionSig(bytes memory payload) internal pure returns(bytes4) {
+    return (bytes4(payload[0]) | bytes4(payload[1]) >> 8 | bytes4(payload[2]) >> 16 | bytes4(payload[3]) >> 24);
   }
 
   /**

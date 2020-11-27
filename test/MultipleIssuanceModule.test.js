@@ -103,9 +103,9 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
         // // Important for a controller minter
         // await this.token.addMinter(controller);
         // await this.token.addMinter(this.multiIssuanceModule.address);
-        // await this.token.setHookContract(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR_STRING, { from: owner });
-        // await this.token.setHookContract(this.checkerContract.address, ERC1400_TOKENS_CHECKER_STRING, { from: owner });
-        // await this.token.setHookContract(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE_STRING, { from: owner });
+        // await this.token.setTokenExtension(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR_STRING, { from: owner });
+        // await this.token.setTokenExtension(this.checkerContract.address, ERC1400_TOKENS_CHECKER_STRING, { from: owner });
+        // await this.token.setTokenExtension(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE_STRING, { from: owner });
 
         // Setup KYC Roles
         const whitelistBytes = 0b1;
