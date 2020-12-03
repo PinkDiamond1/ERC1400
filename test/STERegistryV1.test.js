@@ -242,13 +242,13 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
                 Array(6).fill(futureTime),
              {from: owner});
 
-          assert.equal(await this.validatorContract.isWhitelisted(tokenHolder), true);
-          assert.equal(await this.validatorContract.isWhitelisted(randomTokenHolder), true);
-          assert.equal(await this.validatorContract.isWhitelisted(recipient), true);
-          assert.equal(await this.validatorContract.isBlacklisted(tokenHolder), false);
-          assert.equal(await this.validatorContract.isBlacklisted(randomTokenHolder), false);
-          assert.equal(await this.validatorContract.isBlacklisted(recipient), false);
-          assert.equal(await this.validatorContract.isBlacklisted(blacklisted), true);
+          assert.equal(await this.validatorContract.isAllowlisted(tokenHolder), true);
+          assert.equal(await this.validatorContract.isAllowlisted(randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isAllowlisted(recipient), true);
+          assert.equal(await this.validatorContract.isBlocklisted(tokenHolder), false);
+          assert.equal(await this.validatorContract.isBlocklisted(randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isBlocklisted(recipient), false);
+          assert.equal(await this.validatorContract.isBlocklisted(blacklisted), true);
 
           assert.equal(await this.validatorContract.isEligibleInvestor(tokenHolder), true);
           assert.equal(await this.validatorContract.isFriendsFamilyInvestor(recipient), true);

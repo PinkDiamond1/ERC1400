@@ -1141,8 +1141,8 @@ contract ERC1400 is IERC20, IERC1400, Ownable, ERC1820Client, ERC1820Implementer
   {
     // This line is needed for checkpoints accounting during issuance. It is not Consensys way of doing things
     _callSenderExtension(toPartition, operator, address(0), to, value, data, "");
-
     _callTokenExtension(toPartition, operator, address(0), to, value, data, "");
+
     _issue(operator, to, value, data);
     _addTokenToPartition(to, toPartition, value);
 

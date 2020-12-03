@@ -148,32 +148,30 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
       this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, this.modulesDeployer.address, 0, 0, 1, {from: owner});
       const thisTokenTicker = 'DAU';
       const thisTokenName = 'ERC1400Token';
-
-        const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[0],
-                protocolNames[1],
-                protocolNames[2]]);
-
-        this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
+        // Deploy multiple issuance related module
+        const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+        this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
         this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
-        this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
-        this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
+        // Deploy checker related module
+        const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+        console.log(moduleDeploymentFromRegistry1.logs[1]);
+        this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+        this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[1]);
+
+        // Deploy validator related module
+        const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+        this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[2]);
 
         // Deploy checkpoint related module
-        const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[3]]);
-
-        this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+        const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules(0, [protocolNames[3]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
         this.checkpointModule = await CheckpointsModule.at(this.deployedModules[3]);
 
         // Deploy dividend related module
-        const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[4]]);
-
-        this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
+        const moduleDeploymentFromRegistry4 = await this.steRegistryV1.deployModules(0, [protocolNames[4]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry4.logs[0].args._modules[0]);
         this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
 
 
@@ -199,6 +197,11 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         this.newcontractAddress = log.args._securityTokenAddress;
         assert.isTrue(this.newcontractAddress.length >= 40);
 
+        console.log('here2');
+        // First make sure the validator contract is hooked in
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
+
+        console.log('here3');
         // Get Security Token address from ticker
         const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
         assert.equal(tickerSTAddress, this.newcontractAddress);

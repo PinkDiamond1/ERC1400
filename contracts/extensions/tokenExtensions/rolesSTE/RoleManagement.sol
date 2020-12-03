@@ -21,37 +21,36 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     mapping(address => KYCValidity) public kycValidityMap;
     address[] public kycAddedUsers;
 
-    event WhitelistedInvestorAdded(address indexed account);
-    event WhitelistedInvestorRemoved(address indexed account);
+    event AllowlistedInvestorAdded(address token, address indexed account);
+    event AllowlistedInvestorRemoved(address token, address indexed account);
 
-    event BlacklistedInvestorAdded(address indexed account);
-    event BlacklistedInvestorRemoved(address indexed account);
+    event BlocklistedInvestorAdded(address token, address indexed account);
+    event BlocklistedInvestorRemoved(address token, address indexed account);
 
-    event FriendsFamilyInvestorAdded(address indexed account);
-    event FriendsFamilyInvestorRemoved(address indexed account);
+    event FriendsFamilyInvestorAdded(address token, address indexed account);
+    event FriendsFamilyInvestorRemoved(address token, address indexed account);
 
-    event AccreditedInvestorAdded(address indexed account);
-    event AccreditedInvestorRemoved(address indexed account);
+    event AccreditedInvestorAdded(address token, address indexed account);
+    event AccreditedInvestorRemoved(address token, address indexed account);
 
-    event EligibleInvestorAdded(address indexed account);
-    event EligibleInvestorRemoved(address indexed account);
+    event EligibleInvestorAdded(address token, address indexed account);
+    event EligibleInvestorRemoved(address token, address indexed account);
 
-    event EmployeeInvestorAdded(address indexed account);
-    event EmployeeInvestorRemoved(address indexed account);
+    event EmployeeInvestorAdded(address token, address indexed account);
+    event EmployeeInvestorRemoved(address token, address indexed account);
 
-    event CorporateInvestorAdded(address indexed account);
-    event CorporateInvestorRemoved(address indexed account);
+    event CorporateInvestorAdded(address token, address indexed account);
+    event CorporateInvestorRemoved(address token, address indexed account);
 
     uint256 internal constant ONE = uint256(1);
 
-    // Roles available - // Index for role multi assigning
-    Roles.Role private _whitelistedInvestors; // 0
-    Roles.Role private _blacklistedInvestors; // 1
-    Roles.Role private _friendsFamilyInvestors; // 2
-    Roles.Role private _accreditedInvestors; // 3
-    Roles.Role private _eligibleInvestors; // 4
-    Roles.Role private _employeeInvestors; // 5
-    Roles.Role private _corporateInvestors; // 6
+    mapping(address => Roles.Role) private _allowlisteds; // 0
+    mapping(address => Roles.Role) private _blocklisteds; // 1
+    mapping(address => Roles.Role) private _friendsFamilyInvestors; // 2
+    mapping(address => Roles.Role) private _accreditedInvestors; // 3
+    mapping(address => Roles.Role) private _eligibleInvestors; // 4
+    mapping(address => Roles.Role) private _employeeInvestors; // 5
+    mapping(address => Roles.Role) private _corporateInvestors; // 6
 
     constructor(address owner) public
     AdminRole(owner)
@@ -69,34 +68,34 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
         return (flag == 1 ? true : false);
     }
     /**
-    * @dev kyc whitelist multiple users in a single transaction
-    * @param kycUsers list of whitelisted users
-    * @param flags list of whitelisted users flags in boolean form
+    * @dev kyc allowlist multiple users in a single transaction
+    * @param kycUsers list of allowlisted users
+    * @param flags list of allowlisted users flags in boolean form
     */
-    function addRolesMulti(address[] calldata kycUsers, uint256[] calldata flags, uint256[] calldata canSendAfters, uint256[] calldata canReceiveAfters, uint256[] calldata kycExpiredAfters) external {
+    function addRolesMulti(address token, address[] calldata kycUsers, uint256[] calldata flags, uint256[] calldata canSendAfters, uint256[] calldata canReceiveAfters, uint256[] calldata kycExpiredAfters) external {
         for (uint256 i = 0; i < kycUsers.length; i++) {
             addKycValidTimes(kycUsers[i], canSendAfters[i], canReceiveAfters[i], kycExpiredAfters[i]);
 
             if(getBoolean(flags[i], uint256(0))){
-                addWhitelisted(kycUsers[i]);
+                addAllowlisted(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(1))){
-                addBlacklisted(kycUsers[i]);
+                addBlocklisted(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(2))){
-                addFriendsFamilyInvestor(kycUsers[i]);
+                addFriendsFamilyInvestor(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(3))){
-                addAccreditedInvestor(kycUsers[i]);
+                addAccreditedInvestor(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(4))){
-                addEligibleInvestor(kycUsers[i]);
+                addEligibleInvestor(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(5))){
-                addEmployeeInvestor(kycUsers[i]);
+                addEmployeeInvestor(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(6))){
-                addCorporateInvestor(kycUsers[i]);
+                addCorporateInvestor(token, kycUsers[i]);
             }
         }
     }
@@ -125,205 +124,164 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
         return (kycValidityMap[_account].kycExpiredAfter < now);
     }
 
-
-    // Whitelist
-    modifier onlyWhitelisted() {
-        require(isWhitelisted(msg.sender));
-        _;
+    // Allowlist
+    function isAllowlisted(address token, address account) public view returns (bool) {
+        return _allowlisteds[token].has(account);
     }
 
-    function isWhitelisted(address account) public view returns (bool) {
-        return _whitelistedInvestors.has(account);
+    function addAllowlisted(address token, address account) public onlyAdmin {
+        _addAllowlisted(token, account);
     }
 
-    function addWhitelisted(address account) public onlyAdmin {
-        _addWhitelisted(account);
+    function removeAllowlisted(address token, address account) public onlyAdmin {
+        _removeAllowlisted(token, account);
     }
 
-    function removeWhitelisted(address account) public onlyAdmin {
-        _removeWhitelisted(account);
+    function _addAllowlisted(address token, address account) internal {
+        _allowlisteds[token].add(account);
+        emit AllowlistedInvestorAdded(token, account);
     }
 
-    function _addWhitelisted(address account) internal {
-        _whitelistedInvestors.add(account);
-        emit WhitelistedInvestorAdded(account);
+    function _removeAllowlisted(address token, address account) internal {
+        _allowlisteds[token].remove(account);
+        emit AllowlistedInvestorRemoved(token, account);
     }
 
-    function _removeWhitelisted(address account) internal {
-        _whitelistedInvestors.remove(account);
-        emit WhitelistedInvestorRemoved(account);
+    // Blocklist
+    function isBlocklisted(address token, address account) public view returns (bool) {
+        return _blocklisteds[token].has(account);
     }
 
-
-    // Blacklist
-    modifier onlyNotBlacklisted() {
-        require(!isBlacklisted(msg.sender));
-        _;
+    function addBlocklisted(address token, address account) public onlyAdmin {
+        _addBlocklisted(token, account);
     }
 
-    function isBlacklisted(address account) public view returns (bool) {
-        return _blacklistedInvestors.has(account);
+    function removeBlocklisted(address token, address account) public onlyAdmin {
+        _removeBlocklisted(token, account);
     }
 
-    function addBlacklisted(address account) public onlyAdmin {
-        _addBlacklisted(account);
+    function _addBlocklisted(address token, address account) internal {
+        _blocklisteds[token].add(account);
+        emit BlocklistedInvestorAdded(token, account);
     }
 
-    function removeBlacklisted(address account) public onlyAdmin {
-        _removeBlacklisted(account);
+    function _removeBlocklisted(address token, address account) internal {
+        _blocklisteds[token].remove(account);
+        emit BlocklistedInvestorRemoved(token, account);
     }
 
-    function _addBlacklisted(address account) internal {
-        _blacklistedInvestors.add(account);
-        emit BlacklistedInvestorAdded(account);
+    // Friends and Family
+    function isFriendsFamilyInvestor(address token, address account) public view returns (bool) {
+        return _friendsFamilyInvestors[token].has(account);
     }
 
-    function _removeBlacklisted(address account) internal {
-        _blacklistedInvestors.remove(account);
-        emit BlacklistedInvestorRemoved(account);
+    function addFriendsFamilyInvestor(address token, address account) public onlyAdmin {
+        _addFriendsFamilyInvestor(token, account);
     }
 
-
-    // FriendsFamily
-    modifier onlyFriendsFamilyInvestor() {
-        require(isFriendsFamilyInvestor(msg.sender));
-        _;
+    function removeFriendsFamilyInvestor(address token, address account) public onlyAdmin {
+        _removeFriendsFamilyInvestor(token, account);
     }
 
-    function isFriendsFamilyInvestor(address account) public view returns (bool) {
-        return _friendsFamilyInvestors.has(account);
+    function _addFriendsFamilyInvestor(address token, address account) internal {
+        _friendsFamilyInvestors[token].add(account);
+        emit FriendsFamilyInvestorAdded(token, account);
     }
 
-    function addFriendsFamilyInvestor(address account) public onlyAdmin {
-        _addFriendsFamilyInvestor(account);
+    function _removeFriendsFamilyInvestor(address token, address account) internal {
+        _friendsFamilyInvestors[token].remove(account);
+        emit FriendsFamilyInvestorRemoved(token, account);
     }
-
-    function removeFriendsFamilyInvestor(address account) public onlyAdmin {
-        _removeFriendsFamilyInvestor(account);
-    }
-
-    function _addFriendsFamilyInvestor(address account) internal {
-        _friendsFamilyInvestors.add(account);
-        emit FriendsFamilyInvestorAdded(account);
-    }
-
-    function _removeFriendsFamilyInvestor(address account) internal {
-        _friendsFamilyInvestors.remove(account);
-        emit FriendsFamilyInvestorRemoved(account);
-    }
-
 
     // Accredited
-    modifier onlyAccreditedInvestor() {
-        require(isAccreditedInvestor(msg.sender));
-        _;
+    function isAccreditedInvestor(address token, address account) public view returns (bool) {
+        return _accreditedInvestors[token].has(account);
     }
 
-    function isAccreditedInvestor(address account) public view returns (bool) {
-        return _accreditedInvestors.has(account);
+    function addAccreditedInvestor(address token, address account) public onlyAdmin {
+        _addAccreditedInvestor(token, account);
     }
 
-    function addAccreditedInvestor(address account) public onlyAdmin {
-        _addAccreditedInvestor(account);
+    function removeAccreditedInvestor(address token, address account) public onlyAdmin {
+        _removeAccreditedInvestor(token, account);
     }
 
-    function removeAccreditedInvestor(address account) public onlyAdmin {
-        _removeAccreditedInvestor(account);
+    function _addAccreditedInvestor(address token, address account) internal {
+        _accreditedInvestors[token].add(account);
+        emit AccreditedInvestorAdded(token, account);
     }
 
-    function _addAccreditedInvestor(address account) internal {
-        _accreditedInvestors.add(account);
-        emit AccreditedInvestorAdded(account);
+    function _removeAccreditedInvestor(address token, address account) internal {
+        _accreditedInvestors[token].remove(account);
+        emit AccreditedInvestorRemoved(token, account);
     }
-
-    function _removeAccreditedInvestor(address account) internal {
-        _accreditedInvestors.remove(account);
-        emit AccreditedInvestorRemoved(account);
-    }
-
 
     // Eligible
-    modifier onlyEligibleInvestor() {
-        require(isEligibleInvestor(msg.sender));
-        _;
+    function isEligibleInvestor(address token, address account) public view returns (bool) {
+        return _eligibleInvestors[token].has(account);
     }
 
-    function isEligibleInvestor(address account) public view returns (bool) {
-        return _eligibleInvestors.has(account);
+    function addEligibleInvestor(address token, address account) public onlyAdmin {
+        _addEligibleInvestor(token, account);
     }
 
-    function addEligibleInvestor(address account) public onlyAdmin {
-        _addEligibleInvestor(account);
+    function removeEligibleInvestor(address token, address account) public onlyAdmin {
+        _removeEligibleInvestor(token, account);
     }
 
-    function removeEligibleInvestor(address account) public onlyAdmin {
-        _removeEligibleInvestor(account);
+    function _addEligibleInvestor(address token, address account) internal {
+        _eligibleInvestors[token].add(account);
+        emit EligibleInvestorAdded(token, account);
     }
 
-    function _addEligibleInvestor(address account) internal {
-        _eligibleInvestors.add(account);
-        emit EligibleInvestorAdded(account);
-    }
-
-    function _removeEligibleInvestor(address account) internal {
-        _eligibleInvestors.remove(account);
-        emit EligibleInvestorRemoved(account);
+    function _removeEligibleInvestor(address token, address account) internal {
+        _eligibleInvestors[token].remove(account);
+        emit EligibleInvestorRemoved(token, account);
     }
 
     // Employee
-    modifier onlyEmployeeInvestor() {
-        require(isEmployeeInvestor(msg.sender));
-        _;
+    function isEmployeeInvestor(address token, address account) public view returns (bool) {
+        return _employeeInvestors[token].has(account);
     }
 
-    function isEmployeeInvestor(address account) public view returns (bool) {
-        return _employeeInvestors.has(account);
+    function addEmployeeInvestor(address token, address account) public onlyAdmin {
+        _addEmployeeInvestor(token, account);
     }
 
-    function addEmployeeInvestor(address account) public onlyAdmin {
-        _addEmployeeInvestor(account);
+    function removeEmployeeInvestor(address token, address account) public onlyAdmin {
+        _removeEmployeeInvestor(token, account);
     }
 
-    function removeEmployeeInvestor(address account) public onlyAdmin {
-        _removeEmployeeInvestor(account);
+    function _addEmployeeInvestor(address token, address account) internal {
+        _employeeInvestors[token].add(account);
+        emit EmployeeInvestorAdded(token, account);
     }
 
-    function _addEmployeeInvestor(address account) internal {
-        _employeeInvestors.add(account);
-        emit EmployeeInvestorAdded(account);
-    }
-
-    function _removeEmployeeInvestor(address account) internal {
-        _employeeInvestors.remove(account);
-        emit EmployeeInvestorRemoved(account);
+    function _removeEmployeeInvestor(address token, address account) internal {
+        _employeeInvestors[token].remove(account);
+        emit EmployeeInvestorRemoved(token, account);
     }
 
     // Corporate
-    modifier onlyCorporateInvestor() {
-        require(isCorporateInvestor(msg.sender));
-        _;
+    function isCorporateInvestor(address token, address account) public view returns (bool) {
+        return _corporateInvestors[token].has(account);
     }
 
-    function isCorporateInvestor(address account) public view returns (bool) {
-        return _corporateInvestors.has(account);
+    function addCorporateInvestor(address token, address account) public onlyAdmin {
+        _addCorporateInvestor(token, account);
     }
 
-    function addCorporateInvestor(address account) public onlyAdmin {
-        _addCorporateInvestor(account);
+    function removeCorporateInvestor(address token, address account) public onlyAdmin {
+        _removeCorporateInvestor(token, account);
     }
 
-    function removeCorporateInvestor(address account) public onlyAdmin {
-        _removeCorporateInvestor(account);
+    function _addCorporateInvestor(address token, address account) internal {
+        _corporateInvestors[token].add(account);
+        emit CorporateInvestorAdded(token, account);
     }
 
-    function _addCorporateInvestor(address account) internal {
-        _corporateInvestors.add(account);
-        emit CorporateInvestorAdded(account);
+    function _removeCorporateInvestor(address token, address account) internal {
+        _corporateInvestors[token].remove(account);
+        emit CorporateInvestorRemoved(token, account);
     }
-
-    function _removeCorporateInvestor(address account) internal {
-        _corporateInvestors.remove(account);
-        emit CorporateInvestorRemoved(account);
-    }
-
 }

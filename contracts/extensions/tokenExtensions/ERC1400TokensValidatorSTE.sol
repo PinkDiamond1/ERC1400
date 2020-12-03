@@ -1,48 +1,81 @@
 pragma solidity 0.5.10;
 
-import "./IERC1400TokensValidator.sol";
-
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
+import "../../roles/Pausable.sol";
+import "../../roles/CertificateSignerRole.sol";
 import "./rolesSTE/RoleManagement.sol";
 
 import "erc1820/contracts/ERC1820Client.sol";
 import "../../interface/ERC1820Implementer.sol";
 
 import "../../IERC1400.sol";
-import "../userExtensions/IERC1400TokensSender.sol";
-import "../userExtensions/IERC1400TokensRecipient.sol";
-import "../../proxy/OwnedUpgradeabilityProxy.sol";
+
+import "./IERC1400TokensValidator.sol";
+
+/**
+ * @notice Interface to the Minterrole contract
+ */
+interface IMinterRole {
+  function isMinter(address account) external view returns (bool);
+}
 
 
 contract ERC1400TokensValidatorSTE is
   IERC1400TokensValidator,
   Ownable,
   Pausable,
+  CertificateSignerRole,
   RoleManagement,
   ERC1820Client,
   ERC1820Implementer {
   using SafeMath for uint256;
 
-  uint256 constant internal MIN = uint256(1);
-  uint256 constant internal MAX = uint256(-1);
-
   string constant internal ERC1400_TOKENS_VALIDATOR = "ERC1400TokensValidator";
 
-  bytes4 constant internal ERC20_TRANSFER_FUNCTION_ID = bytes4(keccak256("transfer(address,uint256)"));
-  bytes4 constant internal ERC20_TRANSFERFROM_FUNCTION_ID = bytes4(keccak256("transferFrom(address,address,uint256)"));
-  bytes4 constant internal ERC1400_TRANSFERWITHDATA_FUNCTION_ID = bytes4(keccak256("transferWithData(address,uint256,bytes)"));
-  bytes4 constant internal ERC1400_TRANSFERFROMWITHDATA_FUNCTION_ID = bytes4(keccak256("transferFromWithData(address,address,uint256,bytes,bytes)"));
-  bytes4 constant internal ERC1400_TRANSFERBYPARTITION_FUNCTION_ID = bytes4(keccak256("transferByPartition(bytes32,address,uint256,bytes)"));
-  bytes4 constant internal ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID = bytes4(keccak256("operatorTransferByPartition(bytes32,address,address,uint256,bytes,bytes)"));
+  bytes4 constant internal ERC20_TRANSFER_ID = bytes4(keccak256("transfer(address,uint256)"));
+  bytes4 constant internal ERC20_TRANSFERFROM_ID = bytes4(keccak256("transferFrom(address,address,uint256)"));
 
-  bool internal _whitelistActivated;
-  bool internal _blacklistActivated;
-  bool internal _holdsActivated;
+//  bytes4 constant internal ERC1400_TRANSFERWITHDATA_ID = bytes4(keccak256("transferWithData(address,uint256,bytes)"));
+//  bytes4 constant internal ERC1400_TRANSFERFROMWITHDATA_ID = bytes4(keccak256("transferFromWithData(address,address,uint256,bytes,bytes)"));
+//  bytes4 constant internal ERC1400_TRANSFERBYPARTITION_ID = bytes4(keccak256("transferByPartition(bytes32,address,uint256,bytes)"));
+//  bytes4 constant internal ERC1400_OPERATORTRANSFERBYPARTITION_ID = bytes4(keccak256("operatorTransferByPartition(bytes32,address,address,uint256,bytes,bytes)"));
 
+
+  // Mapping from token to token controllers.
+  mapping(address => address[]) internal _tokenControllers;
+
+  // Mapping from (token, operator) to token controller status.
+  mapping(address => mapping(address => bool)) internal _isTokenController;
+
+  // Mapping from token to allowlist activation status.
+  mapping(address => bool) internal _allowlistActivated;
+
+  // Mapping from token to blocklist activation status.
+  mapping(address => bool) internal _blocklistActivated;
+
+  // Mapping from token to certificate activation status.
+  mapping(address => CertificateValidation) internal _certificateActivated;
+
+  enum CertificateValidation {
+    None,
+    NonceBased,
+    SaltBased
+  }
+
+  // Mapping from (token, certificateNonce) to "used" status to ensure a certificate can be used only once
+  mapping(address => mapping(address => uint256)) internal _usedCertificateNonce;
+
+  // Mapping from (token, certificateSalt) to "used" status to ensure a certificate can be used only once
+  mapping(address => mapping(bytes32 => bool)) internal _usedCertificateSalt;
+
+  // Mapping from token to partition granularity activation status.
+  mapping(address => bool) internal _granularityByPartitionActivated;
+
+  // Mapping from token to holds activation status.
+  mapping(address => bool) internal _holdsActivated;
 
   enum HoldStatusCode {
     Nonexistent,
@@ -63,11 +96,12 @@ contract ERC1400TokensValidatorSTE is
     uint256 expiration;
     bytes32 secretHash;
     bytes32 secret;
-    address paymentToken;
-    uint256 paymentAmount;
     HoldStatusCode status;
   }
 
+  // Mapping from (token, partition) to partition granularity.
+  mapping(address => mapping(bytes32 => uint256)) internal _granularityByPartition;
+  
   // Mapping from (token, holdId) to hold.
   mapping(address => mapping(bytes32 => Hold)) internal _holds;
 
@@ -83,6 +117,12 @@ contract ERC1400TokensValidatorSTE is
   // Total balance on hold.
   mapping(address => uint256) internal _totalHeldBalance;
 
+  // Mapping from hold parameter's hash to hold's nonce.
+  mapping(bytes32 => uint256) internal _hashNonce;
+
+  // Mapping from (hash, nonce) to hold ID.
+  mapping(bytes32 => mapping(uint256 => bytes32)) internal _holdIds;
+
   event HoldCreated(
     address indexed token,
     bytes32 indexed holdId,
@@ -92,32 +132,145 @@ contract ERC1400TokensValidatorSTE is
     address indexed notary,
     uint256 value,
     uint256 expiration,
-    bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
+    bytes32 secretHash
   );
   event HoldReleased(address indexed token, bytes32 holdId, address indexed notary, HoldStatusCode status);
   event HoldRenewed(address indexed token, bytes32 holdId, address indexed notary, uint256 oldExpiration, uint256 newExpiration);
   event HoldExecuted(address indexed token, bytes32 holdId, address indexed notary, uint256 heldValue, uint256 transferredValue, bytes32 secret);
   event HoldExecutedAndKeptOpen(address indexed token, bytes32 holdId, address indexed notary, uint256 heldValue, uint256 transferredValue, bytes32 secret);
+  
+  /**
+   * @dev Modifier to verify if sender is a token controller.
+   */
+  modifier onlyTokenController(address token) {
+    require(
+      msg.sender == token ||
+      msg.sender == Ownable(token).owner() ||
+      _isTokenController[token][msg.sender],
+      "Sender is not a token controller."
+    );
+    _;
+  }
 
-  constructor(bool whitelistActivated, bool blacklistActivated, bool holdsActivated, address owner) public
+  /**
+   * @dev Modifier to verify if sender is a pauser.
+   */
+  modifier onlyPauser(address token) {
+    require(
+      msg.sender == token ||
+      msg.sender == Ownable(token).owner() ||
+      _isTokenController[token][msg.sender] ||
+      isPauser(token, msg.sender),
+      "Sender is not a pauser"
+    );
+    _;
+  }
+
+  /**
+   * @dev Modifier to verify if sender is a pauser.
+   */
+  modifier onlyCertificateSigner(address token) {
+    require(
+      msg.sender == token ||
+      msg.sender == Ownable(token).owner() ||
+      _isTokenController[token][msg.sender] ||
+      isCertificateSigner(token, msg.sender),
+      "Sender is not a certificate signer"
+    );
+    _;
+  }
+
+//  /**
+//   * @dev Modifier to verify if sender is an allowlist admin.
+//   */
+//  modifier onlyAllowlistAdmin(address token) {
+//    require(
+//      msg.sender == token ||
+//      msg.sender == Ownable(token).owner() ||
+//      _isTokenController[token][msg.sender] ||
+//      isAllowlistAdmin(token, msg.sender),
+//      "Sender is not an allowlist admin"
+//    );
+//    _;
+//  }
+//
+//  /**
+//   * @dev Modifier to verify if sender is a blocklist admin.
+//   */
+//  modifier onlyBlocklistAdmin(address token) {
+//    require(
+//      msg.sender == token ||
+//      msg.sender == Ownable(token).owner() ||
+//      _isTokenController[token][msg.sender] ||
+//      isBlocklistAdmin(token, msg.sender),
+//      "Sender is not a blocklist admin"
+//    );
+//    _;
+//  }
+
+  constructor(address owner) public
   RoleManagement(owner)
   {
     ERC1820Implementer._setInterface(ERC1400_TOKENS_VALIDATOR);
 
     delegateManagement(owner); // ERC1820 Allows to use the registry (factory) to connect hook contracts
+  }
 
-    _whitelistActivated = whitelistActivated;
-    _blacklistActivated = blacklistActivated;
-    _holdsActivated = holdsActivated;
+  /**
+   * @dev Get the list of token controllers for a given token.
+   * @return Setup of a given token.
+   */
+  function retrieveTokenSetup(address token) external view returns (CertificateValidation, bool, bool, bool, bool, address[] memory) {
+    return (
+      _certificateActivated[token],
+      _allowlistActivated[token],
+      _blocklistActivated[token],
+      _granularityByPartitionActivated[token],
+      _holdsActivated[token],
+      _tokenControllers[token]
+    );
+  }
+
+  /**
+   * @dev Register token setup.
+   */
+  function registerTokenSetup(
+    address token,
+    CertificateValidation certificateActivated,
+    bool allowlistActivated,
+    bool blocklistActivated,
+    bool granularityByPartitionActivated,
+    bool holdsActivated,
+    address[] calldata operators
+  ) external onlyAdmin() {
+    _certificateActivated[token] = certificateActivated;
+    _allowlistActivated[token] = allowlistActivated;
+    _blocklistActivated[token] = blocklistActivated;
+    _granularityByPartitionActivated[token] = granularityByPartitionActivated;
+    _holdsActivated[token] = holdsActivated;
+    _setTokenControllers(token, operators);
+  }
+
+  /**
+   * @dev Set list of token controllers for a given token.
+   * @param token Token address.
+   * @param operators Operators addresses.
+   */
+  function _setTokenControllers(address token, address[] memory operators) internal {
+    for (uint i = 0; i<_tokenControllers[token].length; i++){
+      _isTokenController[token][_tokenControllers[token][i]] = false;
+    }
+    for (uint j = 0; j<operators.length; j++){
+      _isTokenController[token][operators[j]] = true;
+    }
+    _tokenControllers[token] = operators;
   }
 
   /**
    * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
-   * @param token Address of the token.
-   * @param payload ID of the function that is called.
-   * @param partition Name of the partition (left empty for ERC1400Raw transfer).
+   * @param token Token address.
+   * @param payload Payload of the initial transaction.
+   * @param partition Name of the partition (left empty for ERC20 transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
    * @param to Token recipient for a transfer and 0x for a redemption.
@@ -141,13 +294,23 @@ contract ERC1400TokensValidatorSTE is
     view
     returns(bool)
   {
-    return(_canValidate(token, payload, partition, operator, from, to, value, data, operatorData));
+    (bool canValidateToken,,) = _canValidateCertificateToken(token, payload, operator, operatorData.length != 0 ? operatorData : data);
+
+    canValidateToken = canValidateToken && _canValidateAllowlistAndBlocklistToken(token, payload, from, to);
+    
+    canValidateToken = canValidateToken && !paused(token);
+
+    canValidateToken = canValidateToken && _canValidateGranularToken(token, partition, value);
+
+    canValidateToken = canValidateToken && _canValidateHoldableToken(token, partition, operator, from, to, value);
+
+    return canValidateToken;
   }
 
   /**
    * @dev Function called by the token contract before executing a transfer.
-   * @param payload ID of the function that is called.
-   * @param partition Name of the partition (left empty for ERC1400Raw transfer).
+   * @param payload Payload of the initial transaction.
+   * @param partition Name of the partition (left empty for ERC20 transfer).
    * @param operator Address which triggered the balance decrease (through transfer or redemption).
    * @param from Token holder.
    * @param to Token recipient for a transfer and 0x for a redemption.
@@ -168,48 +331,189 @@ contract ERC1400TokensValidatorSTE is
   ) // Comments to avoid compilation warnings for unused variables.
     external
   {
-    require(_canValidate(msg.sender, payload, partition, operator, from, to, value, data, operatorData), "A7"); // Transfer Blocked - Identity restriction
+    (bool canValidateCertificateToken, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(msg.sender, payload, operator, operatorData.length != 0 ? operatorData : data);
+    require(canValidateCertificateToken, "54"); // 0x54	transfers halted (contract paused)
+
+    _useCertificateIfActivated(msg.sender, certificateControl, operator, salt);
+
+    require(_canValidateAllowlistAndBlocklistToken(msg.sender, payload, from, to), "54"); // 0x54	transfers halted (contract paused)
+
+    require(!paused(msg.sender), "54"); // 0x54	transfers halted (contract paused)
+
+    require(_canValidateGranularToken(msg.sender, partition, value), "50"); // 0x50	transfer failure
+
+    require(_canValidateHoldableToken(msg.sender, partition, operator, from, to, value), "55"); // 0x55	funds locked (lockup period)
+
+    (,, bytes32 holdId) = _retrieveHoldHashNonceId(msg.sender, partition, operator, from, to, value);
+    if (_holdsActivated[msg.sender] && holdId != "") {
+      Hold storage executableHold = _holds[msg.sender][holdId];
+      _setHoldToExecuted(
+        msg.sender,
+        executableHold,
+        holdId,
+        value,
+        executableHold.value,
+        ""
+      );
+    }
   }
 
   /**
    * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
    * @return 'true' if the token transfer can be validated, 'false' if not.
+   * @return hold ID in case a hold can be executed for the given parameters.
    */
-  function _canValidate(
+  function _canValidateCertificateToken(
     address token,
     bytes memory payload,
-    bytes32 partition,
-    address /*operator*/,
+    address operator,
+    bytes memory certificate
+  )
+    internal
+    view
+    returns(bool, CertificateValidation, bytes32)
+  {
+    if(
+      _certificateActivated[token] > CertificateValidation.None &&
+      _functionSupportsCertificateValidation(payload) &&
+      !isCertificateSigner(token, operator) &&
+      address(this) != operator
+    ) {
+      if(_certificateActivated[token] == CertificateValidation.SaltBased) {
+        (bool valid, bytes32 salt) = _checkSaltBasedCertificate(
+          token,
+          operator,
+          payload,
+          certificate
+        );
+        if(valid) {
+          return (true, CertificateValidation.SaltBased, salt);
+        } else {
+          return (false, CertificateValidation.SaltBased, "");
+        }
+        
+      } else { // case when _certificateActivated[token] == CertificateValidation.NonceBased
+        if(
+          _checkNonceBasedCertificate(
+            token,
+            operator,
+            payload,
+            certificate
+          )
+        ) {
+          return (true, CertificateValidation.NonceBased, "");
+        } else {
+          return (false, CertificateValidation.SaltBased, "");
+        }
+      }
+    }
+
+    return (true, CertificateValidation.None, "");
+  }
+
+  /**
+   * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
+   * @return 'true' if the token transfer can be validated, 'false' if not.
+   * @return hold ID in case a hold can be executed for the given parameters.
+   */
+  function _canValidateAllowlistAndBlocklistToken(
+    address token,
+    bytes memory payload,
     address from,
-    address to,
-    uint value,
-    bytes memory /*data*/,
-    bytes memory /*operatorData*/
+    address to
   ) // Comments to avoid compilation warnings for unused variables.
     internal
     view
-    whenNotPaused
     returns(bool)
   {
-    if(from == address(0) || to == address(0)){
-      // If the address is 0, it is an issuance or redemption, not a kyc user moving tokens around
-      return true;
-    }
-
-    if(_functionRequiresValidation(payload)) {
-      if(_whitelistActivated) {
-        if(!isWhitelisted(from) || !isWhitelisted(to)) {
+    if(
+      !_functionSupportsCertificateValidation(payload) ||
+      _certificateActivated[token] == CertificateValidation.None
+    ) {
+      if(_allowlistActivated[token]) {
+        if(from != address(0) && !isAllowlisted(token, from)) {
+          return false;
+        }
+        if(to != address(0) && !isAllowlisted(token, to)) {
           return false;
         }
       }
-      if(_blacklistActivated) {
-        if(isBlacklisted(from) || isBlacklisted(to)) {
+      if(_blocklistActivated[token]) {
+        if(from != address(0) && isBlocklisted(token, from)) {
+          return false;
+        }
+        if(to != address(0) && isBlocklisted(token, to)) {
           return false;
         }
       }
+
+      if (from != address(0) && (kycValidityMap[from].kycExpiredAfter < now)) {
+        return false;
+      }
+      if (from != address(0) && (kycValidityMap[from].canSendAfter < now)) {
+        return false;
+      }
+      if (to != address(0) && (kycValidityMap[to].canReceiveAfter < now)) {
+        return false;
+      }
     }
 
-    if (_holdsActivated) {
+    return true;
+  }
+
+  /**
+   * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
+   * @return 'true' if the token transfer can be validated, 'false' if not.
+   * @return hold ID in case a hold can be executed for the given parameters.
+   */
+  function _canValidateGranularToken(
+    address token,
+    bytes32 partition,
+    uint value
+  )
+    internal
+    view
+    returns(bool)
+  {
+    if(_granularityByPartitionActivated[token]) {
+      if(
+        _granularityByPartition[token][partition] > 0 &&
+        !_isMultiple(_granularityByPartition[token][partition], value)
+      ) {
+        return false;
+      } 
+    }
+
+    return true;
+  }
+
+  /**
+   * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
+   * @return 'true' if the token transfer can be validated, 'false' if not.
+   * @return hold ID in case a hold can be executed for the given parameters.
+   */
+  function _canValidateHoldableToken(
+    address token,
+    bytes32 partition,
+    address operator,
+    address from,
+    address to,
+    uint value
+  )
+    internal
+    view
+    returns(bool)
+  {
+    if (_holdsActivated[token] && from != address(0)) {
+      if(operator != from) {
+        (,, bytes32 holdId) = _retrieveHoldHashNonceId(token, partition, operator, from, to, value);
+        Hold storage hold = _holds[token][holdId];
+        
+        if (_holdCanBeExecutedAsNotary(hold, operator, value) && value <= IERC1400(token).balanceOfByPartition(partition, from)) {
+          return true;
+        }
+      }
+      
       if(value > _spendableBalanceOfByPartition(token, partition, from)) {
         return false;
       }
@@ -219,95 +523,91 @@ contract ERC1400TokensValidatorSTE is
   }
 
   /**
-   * @dev Check if validator is activated for the function called in the smart contract.
-   * @param payload ID of the function that is called.
-   * @return 'true' if the function requires validation, 'false' if not.
+   * @dev Get granularity for a given partition.
+   * @param token Token address.
+   * @param partition Name of the partition.
+   * @return Granularity of the partition.
    */
-  function _functionRequiresValidation(bytes memory payload) internal pure returns(bool) {
-    bytes4 functionSig = _getFunctionSig(payload);
-  // Here we define specific functions on the ERC1400 contract that require whitelisting of users.
-    if(areEqual(functionSig, ERC20_TRANSFER_FUNCTION_ID)
-          || areEqual(functionSig, ERC20_TRANSFERFROM_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERWITHDATA_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERFROMWITHDATA_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_TRANSFERBYPARTITION_FUNCTION_ID)
-          || areEqual(functionSig, ERC1400_OPERATORTRANSFERBYPARTITION_FUNCTION_ID))
-    {
-      return true;
-    } else {
-      return false;
-    }
-  //return true;
+  function granularityByPartition(address token, bytes32 partition) external view returns (uint256) {
+    return _granularityByPartition[token][partition];
+  }
+  
+  /**
+   * @dev Set partition granularity
+   */
+  function setGranularityByPartition(
+    address token,
+    bytes32 partition,
+    uint256 granularity
+  )
+    external
+    onlyTokenController(token)
+  {
+    _granularityByPartition[token][partition] = granularity;
   }
 
   /**
-   * @dev Extract function signature from payload.
-   * @param payload Payload of the initial transaction.
-   * @return Function signature.
+   * @dev Create a new token pre-hold.
    */
-  function _getFunctionSig(bytes memory payload) internal pure returns(bytes4) {
-    return (bytes4(payload[0]) | bytes4(payload[1]) >> 8 | bytes4(payload[2]) >> 16 | bytes4(payload[3]) >> 24);
+  function preHoldFor(
+    address token,
+    bytes32 holdId,
+    address recipient,
+    address notary,
+    bytes32 partition,
+    uint256 value,
+    uint256 timeToExpiration,
+    bytes32 secretHash,
+    bytes calldata certificate
+  )
+    external
+    returns (bool)
+  {
+    return _createHold(
+      token,
+      holdId,
+      address(0),
+      recipient,
+      notary,
+      partition,
+      value,
+      _computeExpiration(timeToExpiration),
+      secretHash,
+      certificate
+    );
   }
 
-  /**
-   * @dev Check if 2 variables of type bytes4 are identical.
-   * @return 'true' if 2 variables are identical, 'false' if not.
+   /**
+   * @dev Create a new token pre-hold with expiration date.
    */
-  function areEqual(bytes4 a, bytes4 b) internal pure returns(bool) {
-    for (uint256 i = 0; i < a.length; i++) {
-      if(a[i] != b[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
+  function preHoldForWithExpirationDate(
+    address token,
+    bytes32 holdId,
+    address recipient,
+    address notary,
+    bytes32 partition,
+    uint256 value,
+    uint256 expiration,
+    bytes32 secretHash,
+    bytes calldata certificate
+  )
+    external
+    returns (bool)
+  {
+    _checkExpiration(expiration);
 
-  /**
-   * @dev Know if whitelist feature is activated.
-   * @return bool 'true' if whitelist feature is activated, 'false' if not.
-   */
-  function isWhitelistActivated() external view returns (bool) {
-    return _whitelistActivated;
-  }
-
-  /**
-   * @dev Set whitelist activation status.
-   * @param whitelistActivated 'true' if whitelist shall be activated, 'false' if not.
-   */
-  function setWhitelistActivated(bool whitelistActivated) external onlyOwner {
-    _whitelistActivated = whitelistActivated;
-  }
-
-  /**
-   * @dev Know if blacklist feature is activated.
-   * @return bool 'true' if blakclist feature is activated, 'false' if not.
-   */
-  function isBlacklistActivated() external view returns (bool) {
-    return _blacklistActivated;
-  }
-
-  /**
-   * @dev Set blacklist activation status.
-   * @param blacklistActivated 'true' if blacklist shall be activated, 'false' if not.
-   */
-  function setBlacklistActivated(bool blacklistActivated) external onlyOwner {
-    _blacklistActivated = blacklistActivated;
-  }
-
-  /**
-  * @dev Know if holds feature is activated.
-  * @return bool 'true' if holds feature is activated, 'false' if not.
-  */
-  function isHoldsActivated() external view returns (bool) {
-    return _holdsActivated;
-  }
-
-  /**
-   * @dev Set holds activation status.
-   * @param holdsActivated 'true' if holds shall be activated, 'false' if not.
-   */
-  function setHoldsActivated(bool holdsActivated) external onlyOwner {
-    _holdsActivated = holdsActivated;
+    return _createHold(
+      token,
+      holdId,
+      address(0),
+      recipient,
+      notary,
+      partition,
+      value,
+      expiration,
+      secretHash,
+      certificate
+    );
   }
 
   /**
@@ -322,11 +622,12 @@ contract ERC1400TokensValidatorSTE is
     uint256 value,
     uint256 timeToExpiration,
     bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
-  ) external returns (bool)
+    bytes calldata certificate
+  ) 
+    external
+    returns (bool)
   {
-    return _hold(
+    return _createHold(
       token,
       holdId,
       msg.sender,
@@ -336,8 +637,40 @@ contract ERC1400TokensValidatorSTE is
       value,
       _computeExpiration(timeToExpiration),
       secretHash,
-      paymentToken,
-      paymentAmount
+      certificate
+    );
+  }
+
+  /**
+   * @dev Create a new token hold with expiration date.
+   */
+  function holdWithExpirationDate(
+    address token,
+    bytes32 holdId,
+    address recipient,
+    address notary,
+    bytes32 partition,
+    uint256 value,
+    uint256 expiration,
+    bytes32 secretHash,
+    bytes calldata certificate
+  )
+    external
+    returns (bool)
+  {
+    _checkExpiration(expiration);
+
+    return _createHold(
+      token,
+      holdId,
+      msg.sender,
+      recipient,
+      notary,
+      partition,
+      value,
+      expiration,
+      secretHash,
+      certificate
     );
   }
 
@@ -354,13 +687,13 @@ contract ERC1400TokensValidatorSTE is
     uint256 value,
     uint256 timeToExpiration,
     bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
-  ) external returns (bool)
+    bytes calldata certificate
+  )
+    external
+    returns (bool)
   {
-    _checkHoldFrom(token, partition, msg.sender, sender);
-
-    return _hold(
+    require(sender != address(0), "Payer address must not be zero address");
+    return _createHold(
       token,
       holdId,
       sender,
@@ -370,46 +703,12 @@ contract ERC1400TokensValidatorSTE is
       value,
       _computeExpiration(timeToExpiration),
       secretHash,
-      paymentToken,
-      paymentAmount
+      certificate
     );
   }
 
   /**
-   * @dev Create a new token hold with expiration date.
-   */
-  function holdWithExpirationDate(
-    address token,
-    bytes32 holdId,
-    address recipient,
-    address notary,
-    bytes32 partition,
-    uint256 value,
-    uint256 expiration,
-    bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
-  ) external returns (bool)
-  {
-    _checkExpiration(expiration);
-
-    return _hold(
-      token,
-      holdId,
-      msg.sender,
-      recipient,
-      notary,
-      partition,
-      value,
-      expiration,
-      secretHash,
-      paymentToken,
-      paymentAmount
-    );
-  }
-
-  /**
-   * @dev Create a new token hold with expiration date.
+   * @dev Create a new token hold with expiration date on behalf of the token holder.
    */
   function holdFromWithExpirationDate(
     address token,
@@ -421,14 +720,15 @@ contract ERC1400TokensValidatorSTE is
     uint256 value,
     uint256 expiration,
     bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
-  ) external returns (bool)
+    bytes calldata certificate
+  )
+    external
+    returns (bool)
   {
-    _checkHoldFrom(token, partition, msg.sender, sender);
     _checkExpiration(expiration);
+    require(sender != address(0), "Payer address must not be zero address");
 
-    return _hold(
+    return _createHold(
       token,
       holdId,
       sender,
@@ -438,15 +738,14 @@ contract ERC1400TokensValidatorSTE is
       value,
       expiration,
       secretHash,
-      paymentToken,
-      paymentAmount
+      certificate
     );
   }
 
   /**
    * @dev Create a new token hold.
    */
-  function _hold(
+  function _createHold(
     address token,
     bytes32 holdId,
     address sender,
@@ -456,8 +755,7 @@ contract ERC1400TokensValidatorSTE is
     uint256 value,
     uint256 expiration,
     bytes32 secretHash,
-    address paymentToken,
-    uint256 paymentAmount
+    bytes memory certificate
   ) internal returns (bool)
   {
     Hold storage newHold = _holds[token][holdId];
@@ -466,8 +764,14 @@ contract ERC1400TokensValidatorSTE is
     require(value != 0, "Value must be greater than zero");
     require(newHold.value == 0, "This holdId already exists");
     require(notary != address(0), "Notary address must not be zero address");
-    require(value <= _spendableBalanceOfByPartition(token, partition, sender), "Amount of the hold can't be greater than the spendable balance of the sender");
-
+    require(
+      _canHoldOrCanPreHold(token, msg.sender, sender, certificate),
+      "A hold can only be created with adapted authorizations"
+    );
+    if (sender != address(0)) { // hold (tokens already exist)
+      require(value <= _spendableBalanceOfByPartition(token, partition, sender), "Amount of the hold can't be greater than the spendable balance of the sender");
+    }
+    
     newHold.partition = partition;
     newHold.sender = sender;
     newHold.recipient = recipient;
@@ -475,11 +779,12 @@ contract ERC1400TokensValidatorSTE is
     newHold.value = value;
     newHold.expiration = expiration;
     newHold.secretHash = secretHash;
-    newHold.paymentToken = paymentToken;
-    newHold.paymentAmount = paymentAmount;
     newHold.status = HoldStatusCode.Ordered;
 
-    _increaseHeldBalance(token, partition, sender, value);
+    if(sender != address(0)) {
+      // In case tokens already exist, increase held balance
+      _increaseHeldBalance(token, newHold, holdId);
+    }
 
     emit HoldCreated(
       token,
@@ -490,9 +795,7 @@ contract ERC1400TokensValidatorSTE is
       notary,
       value,
       expiration,
-      secretHash,
-      paymentToken,
-      paymentAmount
+      secretHash
     );
 
     return true;
@@ -512,27 +815,29 @@ contract ERC1400TokensValidatorSTE is
     Hold storage releasableHold = _holds[token][holdId];
 
     require(
-      releasableHold.status == HoldStatusCode.Ordered || releasableHold.status == HoldStatusCode.ExecutedAndKeptOpen,
-      "A hold can only be released in status Ordered or ExecutedAndKeptOpen"
+        releasableHold.status == HoldStatusCode.Ordered || releasableHold.status == HoldStatusCode.ExecutedAndKeptOpen,
+        "A hold can only be released in status Ordered or ExecutedAndKeptOpen"
     );
     require(
-      _isExpired(releasableHold.expiration) ||
-      (msg.sender == releasableHold.notary) ||
-      (msg.sender == releasableHold.recipient),
-      "A not expired hold can only be released by the notary or the payee"
+        _isExpired(releasableHold.expiration) ||
+        (msg.sender == releasableHold.notary) ||
+        (msg.sender == releasableHold.recipient),
+        "A not expired hold can only be released by the notary or the payee"
     );
 
     if (_isExpired(releasableHold.expiration)) {
-      releasableHold.status = HoldStatusCode.ReleasedOnExpiration;
+        releasableHold.status = HoldStatusCode.ReleasedOnExpiration;
     } else {
-      if (releasableHold.notary == msg.sender) {
-        releasableHold.status = HoldStatusCode.ReleasedByNotary;
-      } else {
-        releasableHold.status = HoldStatusCode.ReleasedByPayee;
-      }
+        if (releasableHold.notary == msg.sender) {
+            releasableHold.status = HoldStatusCode.ReleasedByNotary;
+        } else {
+            releasableHold.status = HoldStatusCode.ReleasedByPayee;
+        }
     }
 
-    _decreaseHeldBalance(token, releasableHold.partition, releasableHold.sender, releasableHold.value);
+    if(releasableHold.sender != address(0)) { // In case tokens already exist, decrease held balance
+      _decreaseHeldBalance(token, releasableHold, releasableHold.value);
+    }
 
     emit HoldReleased(token, holdId, releasableHold.notary, releasableHold.status);
 
@@ -542,23 +847,23 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Renew hold.
    */
-  function renewHold(address token, bytes32 holdId, uint256 timeToExpiration) external returns (bool) {
-    return _renewHold(token, holdId, _computeExpiration(timeToExpiration));
+  function renewHold(address token, bytes32 holdId, uint256 timeToExpiration, bytes calldata certificate) external returns (bool) {
+    return _renewHold(token, holdId, _computeExpiration(timeToExpiration), certificate);
   }
 
   /**
    * @dev Renew hold with expiration time.
    */
-  function renewHoldWithExpirationDate(address token, bytes32 holdId, uint256 expiration) external returns (bool) {
+  function renewHoldWithExpirationDate(address token, bytes32 holdId, uint256 expiration, bytes calldata certificate) external returns (bool) {
     _checkExpiration(expiration);
 
-    return _renewHold(token, holdId, expiration);
+    return _renewHold(token, holdId, expiration, certificate);
   }
 
   /**
    * @dev Renew hold.
    */
-  function _renewHold(address token, bytes32 holdId, uint256 expiration) internal returns (bool) {
+  function _renewHold(address token, bytes32 holdId, uint256 expiration, bytes memory certificate) internal returns (bool) {
     Hold storage renewableHold = _holds[token][holdId];
 
     require(
@@ -567,12 +872,12 @@ contract ERC1400TokensValidatorSTE is
       "A hold can only be renewed in status Ordered or ExecutedAndKeptOpen"
     );
     require(!_isExpired(renewableHold.expiration), "An expired hold can not be renewed");
-    require(
-      renewableHold.sender == msg.sender
-      || IERC1400(token).isOperatorForPartition(renewableHold.partition, msg.sender, renewableHold.sender),
-      "The hold can only be renewed by the issuer or the payer"
-    );
 
+    require(
+      _canHoldOrCanPreHold(token, msg.sender, renewableHold.sender, certificate),
+      "A hold can only be renewed with adapted authorizations"
+    );
+    
     uint256 oldExpiration = renewableHold.expiration;
     renewableHold.expiration = expiration;
 
@@ -594,6 +899,7 @@ contract ERC1400TokensValidatorSTE is
     return _executeHold(
       token,
       holdId,
+      msg.sender,
       value,
       secret,
       false
@@ -607,18 +913,20 @@ contract ERC1400TokensValidatorSTE is
     return _executeHold(
       token,
       holdId,
+      msg.sender,
       value,
       secret,
       true
     );
   }
-
+  
   /**
    * @dev Execute hold.
    */
   function _executeHold(
     address token,
     bytes32 holdId,
+    address operator,
     uint256 value,
     bytes32 secret,
     bool keepOpenIfHoldHasBalance
@@ -626,41 +934,45 @@ contract ERC1400TokensValidatorSTE is
   {
     Hold storage executableHold = _holds[token][holdId];
 
-    require(
-      executableHold.status == HoldStatusCode.Ordered || executableHold.status == HoldStatusCode.ExecutedAndKeptOpen,
-      "A hold can only be executed in status Ordered or ExecutedAndKeptOpen"
-    );
-    require(value != 0, "Value must be greater than zero");
-    require(
-      (executableHold.recipient == msg.sender && _checkSecret(executableHold, secret))
-      || executableHold.notary == msg.sender,
-      "The hold can only be executed by the recipient with the secret or by the notary");
-    require(!_isExpired(executableHold.expiration), "The hold has already expired");
-    require(value <= executableHold.value, "The value should be equal or less than the held amount");
-
-    if (keepOpenIfHoldHasBalance && ((executableHold.value - value) > 0)) {
-      _setHoldToExecutedAndKeptOpen(
-        token,
-        executableHold,
-        holdId,
-        value,
-        value,
-        secret
-      );
-    } else {
-      _setHoldToExecuted(
-        token,
-        executableHold,
-        holdId,
-        value,
-        executableHold.value,
-        secret
-      );
+    bool canExecuteHold;
+    if(secret != "" && _holdCanBeExecutedAsSecretHolder(executableHold, value, secret)) {
+      executableHold.secret = secret;
+      canExecuteHold = true;
+    } else if(_holdCanBeExecutedAsNotary(executableHold, operator, value)) {
+      canExecuteHold = true;
     }
 
-    IERC1400(token).operatorTransferByPartition(executableHold.partition, executableHold.sender, executableHold.recipient, value, "", "");
+    if(canExecuteHold) {
+      if (keepOpenIfHoldHasBalance && ((executableHold.value - value) > 0)) {
+        _setHoldToExecutedAndKeptOpen(
+          token,
+          executableHold,
+          holdId,
+          value,
+          value,
+          secret
+        );
+      } else {
+        _setHoldToExecuted(
+          token,
+          executableHold,
+          holdId,
+          value,
+          executableHold.value,
+          secret
+        );
+      }
 
-    return true;
+      if (executableHold.sender == address(0)) { // pre-hold (tokens do not already exist)
+        IERC1400(token).issueByPartition(executableHold.partition, executableHold.recipient, value, "");
+      } else { // post-hold (tokens already exist)
+        IERC1400(token).operatorTransferByPartition(executableHold.partition, executableHold.sender, executableHold.recipient, value, "", "");
+      }
+      
+    } else {
+      revert("hold can not be executed");
+    }
+
   }
 
   /**
@@ -675,7 +987,9 @@ contract ERC1400TokensValidatorSTE is
     bytes32 secret
   ) internal
   {
-    _decreaseHeldBalance(token, executableHold.partition, executableHold.sender, heldBalanceDecrease);
+    if(executableHold.sender != address(0)) { // In case tokens already exist, decrease held balance
+      _decreaseHeldBalance(token, executableHold, heldBalanceDecrease);
+    }
 
     executableHold.status = HoldStatusCode.Executed;
 
@@ -701,7 +1015,9 @@ contract ERC1400TokensValidatorSTE is
     bytes32 secret
   ) internal
   {
-    _decreaseHeldBalance(token, executableHold.partition, executableHold.sender, heldBalanceDecrease);
+    if(executableHold.sender != address(0)) { // In case tokens already exist, decrease held balance
+      _decreaseHeldBalance(token, executableHold, heldBalanceDecrease);
+    } 
 
     executableHold.status = HoldStatusCode.ExecutedAndKeptOpen;
     executableHold.value = executableHold.value.sub(value);
@@ -719,31 +1035,67 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Increase held balance.
    */
-  function _increaseHeldBalance(address token, bytes32 partition, address sender, uint256 value) private {
-    _heldBalance[token][sender] = _heldBalance[token][sender].add(value);
-    _totalHeldBalance[token] = _totalHeldBalance[token].add(value);
+  function _increaseHeldBalance(address token, Hold storage executableHold, bytes32 holdId) private {
+    _heldBalance[token][executableHold.sender] = _heldBalance[token][executableHold.sender].add(executableHold.value);
+    _totalHeldBalance[token] = _totalHeldBalance[token].add(executableHold.value);
 
-    _heldBalanceByPartition[token][sender][partition] = _heldBalanceByPartition[token][sender][partition].add(value);
-    _totalHeldBalanceByPartition[token][partition] = _totalHeldBalanceByPartition[token][partition].add(value);
+    _heldBalanceByPartition[token][executableHold.sender][executableHold.partition] = _heldBalanceByPartition[token][executableHold.sender][executableHold.partition].add(executableHold.value);
+    _totalHeldBalanceByPartition[token][executableHold.partition] = _totalHeldBalanceByPartition[token][executableHold.partition].add(executableHold.value);
+
+    _increaseNonce(token, executableHold, holdId);
   }
 
   /**
    * @dev Decrease held balance.
    */
-  function _decreaseHeldBalance(address token, bytes32 partition, address sender, uint256 value) private {
-    _heldBalance[token][sender] = _heldBalance[token][sender].sub(value);
+  function _decreaseHeldBalance(address token, Hold storage executableHold, uint256 value) private {
+    _heldBalance[token][executableHold.sender] = _heldBalance[token][executableHold.sender].sub(value);
     _totalHeldBalance[token] = _totalHeldBalance[token].sub(value);
 
-    _heldBalanceByPartition[token][sender][partition] = _heldBalanceByPartition[token][sender][partition].sub(value);
-    _totalHeldBalanceByPartition[token][partition] = _totalHeldBalanceByPartition[token][partition].sub(value);
+    _heldBalanceByPartition[token][executableHold.sender][executableHold.partition] = _heldBalanceByPartition[token][executableHold.sender][executableHold.partition].sub(value);
+    _totalHeldBalanceByPartition[token][executableHold.partition] = _totalHeldBalanceByPartition[token][executableHold.partition].sub(value);
+
+    if(executableHold.status == HoldStatusCode.Ordered) {
+      _decreaseNonce(token, executableHold);
+    }
+  }
+
+  /**
+   * @dev Increase nonce.
+   */
+  function _increaseNonce(address token, Hold storage executableHold, bytes32 holdId) private {
+    (bytes32 holdHash, uint256 nonce,) = _retrieveHoldHashNonceId(
+      token, executableHold.partition,
+      executableHold.notary,
+      executableHold.sender,
+      executableHold.recipient,
+      executableHold.value
+    );
+    _hashNonce[holdHash] = nonce.add(1);
+    _holdIds[holdHash][nonce.add(1)] = holdId;
+  }
+
+  /**
+   * @dev Decrease nonce.
+   */
+  function _decreaseNonce(address token, Hold storage executableHold) private {
+    (bytes32 holdHash, uint256 nonce,) = _retrieveHoldHashNonceId(
+      token,
+      executableHold.partition,
+      executableHold.notary,
+      executableHold.sender,
+      executableHold.recipient,
+      executableHold.value
+    );
+    _holdIds[holdHash][nonce] = "";
+    _hashNonce[holdHash] = _hashNonce[holdHash].sub(1);
   }
 
   /**
    * @dev Check secret.
    */
-  function _checkSecret(Hold storage executableHold, bytes32 secret) internal returns (bool) {
+  function _checkSecret(Hold storage executableHold, bytes32 secret) internal view returns (bool) {
     if(executableHold.secretHash == sha256(abi.encodePacked(secret))) {
-      executableHold.secret = secret;
       return true;
     } else {
       return false;
@@ -757,7 +1109,7 @@ contract ERC1400TokensValidatorSTE is
     uint256 expiration = 0;
 
     if (timeToExpiration != 0) {
-      expiration = now.add(timeToExpiration);
+        expiration = now.add(timeToExpiration);
     }
 
     return expiration;
@@ -778,12 +1130,66 @@ contract ERC1400TokensValidatorSTE is
   }
 
   /**
-   * @dev Check if operator can create hold on behalf of token holder.
+   * @dev Retrieve hold hash, nonce, and ID for given parameters
    */
-  function _checkHoldFrom(address token, bytes32 partition, address operator, address sender) private view {
-    require(sender != address(0), "Payer address must not be zero address");
-    require(IERC1400(token).isOperatorForPartition(partition, operator, sender), "This operator is not authorized");
+  function _retrieveHoldHashNonceId(address token, bytes32 partition, address notary, address sender, address recipient, uint value) internal view returns (bytes32, uint256, bytes32) {
+    // Pack and hash hold parameters
+    bytes32 holdHash = keccak256(abi.encodePacked(
+      token,
+      partition,
+      sender,
+      recipient,
+      notary,
+      value
+    ));
+    uint256 nonce = _hashNonce[holdHash];
+    bytes32 holdId = _holdIds[holdHash][nonce];
+
+    return (holdHash, nonce, holdId);
+  }  
+
+  /**
+   * @dev Check if hold can be executed
+   */
+  function _holdCanBeExecuted(Hold storage executableHold, uint value) internal view returns (bool) {
+    if(!(executableHold.status == HoldStatusCode.Ordered || executableHold.status == HoldStatusCode.ExecutedAndKeptOpen)) {
+      return false; // A hold can only be executed in status Ordered or ExecutedAndKeptOpen
+    } else if(value == 0) {
+      return false; // Value must be greater than zero
+    } else if(_isExpired(executableHold.expiration)) {
+      return false; // The hold has already expired
+    } else if(value > executableHold.value) {
+      return false; // The value should be equal or less than the held amount
+    } else {
+      return true;
+    }
   }
+
+  /**
+   * @dev Check if hold can be executed as secret holder
+   */
+  function _holdCanBeExecutedAsSecretHolder(Hold storage executableHold, uint value, bytes32 secret) internal view returns (bool) {
+    if(
+      _checkSecret(executableHold, secret)
+      && _holdCanBeExecuted(executableHold, value)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * @dev Check if hold can be executed as notary
+   */
+  function _holdCanBeExecutedAsNotary(Hold storage executableHold, address operator, uint value) internal view returns (bool) {
+    if(
+      executableHold.notary == operator
+      && _holdCanBeExecuted(executableHold, value)) {
+      return true;
+    } else {
+      return false;
+    }
+  }  
 
   /**
    * @dev Retrieve hold data.
@@ -797,23 +1203,19 @@ contract ERC1400TokensValidatorSTE is
     uint256 expiration,
     bytes32 secretHash,
     bytes32 secret,
-    address paymentToken,
-    uint256 paymentAmount,
     HoldStatusCode status)
   {
     Hold storage retrievedHold = _holds[token][holdId];
     return (
-    retrievedHold.partition,
-    retrievedHold.sender,
-    retrievedHold.recipient,
-    retrievedHold.notary,
-    retrievedHold.value,
-    retrievedHold.expiration,
-    retrievedHold.secretHash,
-    retrievedHold.secret,
-    retrievedHold.paymentToken,
-    retrievedHold.paymentAmount,
-    retrievedHold.status
+      retrievedHold.partition,
+      retrievedHold.sender,
+      retrievedHold.recipient,
+      retrievedHold.notary,
+      retrievedHold.value,
+      retrievedHold.expiration,
+      retrievedHold.secretHash,
+      retrievedHold.secret,
+      retrievedHold.status
     );
   }
 
@@ -872,4 +1274,275 @@ contract ERC1400TokensValidatorSTE is
   function _spendableBalanceOfByPartition(address token, bytes32 partition, address account) internal view returns (uint256) {
     return IERC1400(token).balanceOfByPartition(partition, account) - _heldBalanceByPartition[token][account][partition];
   }
+
+  /**
+   * @dev Check if hold (or pre-hold) can be created.
+   * @return 'true' if the operator can create pre-holds, 'false' if not.
+   */
+  function _canHoldOrCanPreHold(address token, address operator, address sender, bytes memory certificate) internal returns(bool) { 
+    (bool canValidateCertificate, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(token, msg.data, operator, certificate);
+    _useCertificateIfActivated(token, certificateControl, operator, salt);
+
+    if (sender != address(0)) { // hold
+      return canValidateCertificate && (_isTokenController[token][operator] || operator == sender);
+    } else { // pre-hold
+      return canValidateCertificate && IMinterRole(token).isMinter(operator); 
+    }
+  }
+
+  //  /**
+  //   * OLD WAY
+  //   * @dev Check if validator is activated for the function called in the smart contract.
+  //   * @param payload ID of the function that is called.
+  //   * @return 'true' if the function requires validation, 'false' if not.
+  //   */
+  //  function _functionRequiresValidation(bytes memory payload) internal pure returns(bool) {
+  //    bytes4 functionSig = _getFunctionSig(payload);
+  //    // Here we define specific functions on the ERC1400 contract that require allowlisting of users.
+  //    if(areEqual(functionSig, ERC20_TRANSFER_ID)
+  //    || areEqual(functionSig, ERC20_TRANSFERFROM_ID)
+  //    || areEqual(functionSig, ERC1400_TRANSFERWITHDATA_ID)
+  //    || areEqual(functionSig, ERC1400_TRANSFERFROMWITHDATA_ID)
+  //    || areEqual(functionSig, ERC1400_TRANSFERBYPARTITION_ID)
+  //      || areEqual(functionSig, ERC1400_OPERATORTRANSFERBYPARTITION_ID))
+  //    {
+  //      return true;
+  //    } else {
+  //      return false;
+  //    }
+  //  }
+  /**
+   * @dev Check if validator is activated for the function called in the smart contract.
+   * @param payload Payload of the initial transaction.
+   * @return 'true' if the function requires validation, 'false' if not.
+   */
+  function _functionSupportsCertificateValidation(bytes memory payload) internal pure returns(bool) {
+    bytes4 functionSig = _getFunctionSig(payload);
+    if(_areEqual(functionSig, ERC20_TRANSFER_ID) || _areEqual(functionSig, ERC20_TRANSFERFROM_ID)) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * @dev Use certificate, if validated.
+   * @param token Token address.
+   * @param certificateControl Type of certificate.
+   * @param msgSender Transaction sender (only for nonce-based certificates).
+   * @param salt Salt extracted from the certificate (only for salt-based certificates).
+   */
+  function _useCertificateIfActivated(address token, CertificateValidation certificateControl, address msgSender, bytes32 salt) internal {
+    // Declare certificate as used
+    if (certificateControl == CertificateValidation.NonceBased) {
+      _usedCertificateNonce[token][msgSender] += 1;
+    } else if (certificateControl == CertificateValidation.SaltBased) {
+      _usedCertificateSalt[token][salt] = true;
+    }
+  }
+
+  /**
+   * @dev Extract function signature from payload.
+   * @param payload Payload of the initial transaction.
+   * @return Function signature.
+   */
+  function _getFunctionSig(bytes memory payload) internal pure returns(bytes4) {
+    return (bytes4(payload[0]) | bytes4(payload[1]) >> 8 | bytes4(payload[2]) >> 16 | bytes4(payload[3]) >> 24);
+  }
+
+  /**
+   * @dev Check if 2 variables of type bytes4 are identical.
+   * @return 'true' if 2 variables are identical, 'false' if not.
+   */
+  function _areEqual(bytes4 a, bytes4 b) internal pure returns(bool) {
+    for (uint256 i = 0; i < a.length; i++) {
+      if(a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * @dev Check if 'value' is multiple of 'granularity'.
+   * @param granularity The granularity that want's to be checked.
+   * @param value The quantity that want's to be checked.
+   * @return 'true' if 'value' is a multiple of 'granularity'.
+   */
+  function _isMultiple(uint256 granularity, uint256 value) internal pure returns(bool) {
+    return(value.div(granularity).mul(granularity) == value);
+  }
+
+  /**
+   * @dev Get state of certificate (used or not).
+   * @param token Token address.
+   * @param sender Address whom to check the counter of.
+   * @return uint256 Number of transaction already sent for this token contract.
+   */
+  function usedCertificateNonce(address token, address sender) external view returns (uint256) {
+    return _usedCertificateNonce[token][sender];
+  }
+
+  /**
+   * @dev Checks if a nonce-based certificate is correct
+   * @param certificate Certificate to control
+   */
+  function _checkNonceBasedCertificate(
+    address token,
+    address msgSender,
+    bytes memory payloadWithCertificate,
+    bytes memory certificate
+  )
+    internal
+    view
+    returns(bool)
+  {
+    // Certificate should be 97 bytes long
+    if (certificate.length != 97) {
+      return false;
+    }
+
+    uint256 e;
+    uint8 v;
+
+    // Extract certificate information and expiration time from payload
+    assembly {
+      // Retrieve expirationTime & ECDSA element (v) from certificate which is a 97 long bytes
+      // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+      e := mload(add(certificate, 0x20))
+      v := byte(0, mload(add(certificate, 0x80)))
+    }
+
+    // Certificate should not be expired
+    if (e < now) {
+      return false;
+    }
+
+    if (v < 27) {
+      v += 27;
+    }
+
+    // Perform ecrecover to ensure message information corresponds to certificate
+    if (v == 27 || v == 28) {
+      // Extract certificate from payload
+      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(160));
+      for (uint i = 0; i < payloadWithCertificate.length.sub(160); i++) { // replace 4 bytes corresponding to function selector
+        payloadWithoutCertificate[i] = payloadWithCertificate[i];
+      }
+
+      // Pack and hash
+      bytes memory pack = abi.encodePacked(
+        msgSender,
+        token,
+        payloadWithoutCertificate,
+        e,
+        _usedCertificateNonce[token][msgSender]
+      );
+      bytes32 hash = keccak256(pack);
+
+      bytes32 r;
+      bytes32 s;
+      // Extract certificate information and expiration time from payload
+      assembly {
+        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
+        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+        r := mload(add(certificate, 0x40))
+        s := mload(add(certificate, 0x60))
+      }
+
+      // Check if certificate match expected transactions parameters
+      if (isCertificateSigner(token, ecrecover(hash, v, r, s))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @dev Get state of certificate (used or not).
+   * @param token Token address.
+   * @param salt First 32 bytes of certificate whose validity is being checked.
+   * @return bool 'true' if certificate is already used, 'false' if not.
+   */
+  function usedCertificateSalt(address token, bytes32 salt) external view returns (bool) {
+    return _usedCertificateSalt[token][salt];
+  }
+
+  /**
+   * @dev Checks if a salt-based certificate is correct
+   * @param certificate Certificate to control
+   */
+  function _checkSaltBasedCertificate(
+    address token,
+    address msgSender,
+    bytes memory payloadWithCertificate,
+    bytes memory certificate
+  )
+    internal
+    view
+    returns(bool, bytes32)
+  {
+    // Certificate should be 129 bytes long
+    if (certificate.length != 129) {
+      return (false, "");
+    }
+
+    bytes32 salt;
+    uint256 e;
+    uint8 v;
+
+    // Extract certificate information and expiration time from payload
+    assembly {
+      // Retrieve expirationTime & ECDSA elements from certificate which is a 97 long bytes
+      // Certificate encoding format is: <salt (32 bytes)>@<expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+      salt := mload(add(certificate, 0x20))
+      e := mload(add(certificate, 0x40))
+      v := byte(0, mload(add(certificate, 0xa0)))
+    }
+
+    // Certificate should not be expired
+    if (e < now) {
+      return (false, "");
+    }
+
+    if (v < 27) {
+      v += 27;
+    }
+
+    // Perform ecrecover to ensure message information corresponds to certificate
+    if (v == 27 || v == 28) {
+      // Extract certificate from payload
+      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(192));
+      for (uint i = 0; i < payloadWithCertificate.length.sub(192); i++) { // replace 4 bytes corresponding to function selector
+        payloadWithoutCertificate[i] = payloadWithCertificate[i];
+      }
+
+      // Pack and hash
+      bytes memory pack = abi.encodePacked(
+        msgSender,
+        token,
+        payloadWithoutCertificate,
+        e,
+        salt
+      );
+      bytes32 hash = keccak256(pack);
+
+      bytes32 r;
+      bytes32 s;
+      // Extract certificate information and expiration time from payload
+      assembly {
+        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
+        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+        r := mload(add(certificate, 0x60))
+        s := mload(add(certificate, 0x80))
+      }
+
+      // Check if certificate match expected transactions parameters
+      if (isCertificateSigner(token, ecrecover(hash, v, r, s)) && !_usedCertificateSalt[token][salt]) {
+        return (true, salt);
+      }
+    }
+    return (false, "");
+  }
+
 }
