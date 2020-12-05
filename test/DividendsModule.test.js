@@ -157,12 +157,15 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
         console.log(moduleDeploymentFromRegistry1.logs[1]);
         this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
-        this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[1]);
+        this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
 
         // Deploy validator related module
         const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
         this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
-        this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[2]);
+        this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
+        console.log('deployed modules');
+        console.log(this.deployedModules);
 
         // Deploy checkpoint related module
         const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules(0, [protocolNames[3]]);
@@ -224,6 +227,7 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         const futureTime = Math.round(new Date(2040,0).getTime()/1000);
         // Using bitwise OR to send what roles I want to the contract
         await this.validatorContract.addRolesMulti(
+            this.newcontractAddress,
             [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted, treasuryWallet, this.dividendModule.address],
             [whitelistBytes | eligibleBytes,
                 whitelistBytes | friendsFamilyBytes,

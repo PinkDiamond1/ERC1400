@@ -450,10 +450,10 @@ contract ERC1400TokensValidatorSTE is
       if (from != address(0) && (kycValidityMap[from].kycExpiredAfter < now)) {
         return false;
       }
-      if (from != address(0) && (kycValidityMap[from].canSendAfter < now)) {
+      if (from != address(0) && (kycValidityMap[from].canSendAfter > now)) {
         return false;
       }
-      if (to != address(0) && (kycValidityMap[to].canReceiveAfter < now)) {
+      if (to != address(0) && (kycValidityMap[to].canReceiveAfter > now)) {
         return false;
       }
     }
