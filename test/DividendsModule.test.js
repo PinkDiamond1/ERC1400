@@ -155,7 +155,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
 
         // Deploy checker related module
         const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
-        console.log(moduleDeploymentFromRegistry1.logs[1]);
         this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
         this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
 
@@ -163,9 +162,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
         this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
         this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
-
-        console.log('deployed modules');
-        console.log(this.deployedModules);
 
         // Deploy checkpoint related module
         const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules(0, [protocolNames[3]]);
@@ -176,7 +172,6 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         const moduleDeploymentFromRegistry4 = await this.steRegistryV1.deployModules(0, [protocolNames[4]]);
         this.deployedModules.push(moduleDeploymentFromRegistry4.logs[0].args._modules[0]);
         this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
-
 
         this.erc20Token = await ERC20.new('ERC20Token', 'DAU', 18, {from: controller});
         await this.erc20Token.mint(controller, issuanceAmount, {from: controller});
@@ -200,14 +195,12 @@ contract('DividendsModule', function ([owner, treasuryWallet, controller, contro
         this.newcontractAddress = log.args._securityTokenAddress;
         assert.isTrue(this.newcontractAddress.length >= 40);
 
-        console.log('here2');
-        // First make sure the validator contract is hooked in
-        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
-
-        console.log('here3');
         // Get Security Token address from ticker
         const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
         assert.equal(tickerSTAddress, this.newcontractAddress);
+
+        // First make sure the validator contract is hooked in
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
 
         //// Make sure the token works
         this.token = await ERC1400.at(this.newcontractAddress);

@@ -61,7 +61,10 @@ contract('ModulesDeployer', function ([owner, operator, controller, controller_a
 
       describe('modules deployer', function () {
           it('can deploy the modules', async function () {
-              await this.modulesDeployer.deployMultipleModulesFromFactories(protocolNames, 0, 0, 1, {from:owner});
+              // Can deploy the multiple issuance module and the checker together
+              await this.modulesDeployer.deployMultipleModulesFromFactories([protocolNames[0], protocolNames[2]], 0, 0, 1, {from:owner});
+              // Deploy the validator on its own
+              await this.modulesDeployer.deployMultipleModulesFromFactories([protocolNames[1]], 0, 0, 1, {from:owner});
           });
       });
       

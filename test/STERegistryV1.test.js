@@ -48,7 +48,8 @@ const protocolNames =
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
- const VALID_CERTIFICATE = '0x1000000000000000000000000000000000000000000000000000000000000000';
+
+ const VALID_CERTIFICATE = '0x0';
 
  const CERTIFICATE_SIGNER = '0xe31C41f0f70C5ff39f73B4B94bcCD767b3071630';
 
@@ -110,39 +111,34 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const isTickerCurrentlyRegistered = await this.steRegistryV1.tickerAvailable(thisTokenTicker);
       assert.isTrue(isTickerCurrentlyRegistered);
 
-      const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[0],
-                protocolNames[1],
-                protocolNames[2]]);
+          // Deploy multiple issuance related module
+          const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+          this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
+          this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
 
-      this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
-      this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
-      this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
-      this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+          // Deploy checker related module
+          const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+          this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+          this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
 
-      // Deploy checkpoint related module
-       const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[3]]);
-
+          // Deploy validator related module
+          const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
           this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+          this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
+          // Deploy checkpoint related module
+          const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules(0, [protocolNames[3]]);
+          this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
           this.checkpointModule = await CheckpointsModule.at(this.deployedModules[3]);
 
           // Deploy dividend related module
-          const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[4]]);
-
-          this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
+          const moduleDeploymentFromRegistry4 = await this.steRegistryV1.deployModules(0, [protocolNames[4]]);
+          this.deployedModules.push(moduleDeploymentFromRegistry4.logs[0].args._modules[0]);
           this.dividendModule = await DividendsModule.at(this.deployedModules[4]);
 
-          // Deploy voting module
-          const moduleDeploymentFromRegistry4 = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[5]]);
-
-          this.deployedModules.push(moduleDeploymentFromRegistry4.logs[0].args._modules[0]);
+          // Deploy voting related module
+          const moduleDeploymentFromRegistry5 = await this.steRegistryV1.deployModules(0, [protocolNames[5]]);
+          this.deployedModules.push(moduleDeploymentFromRegistry5.logs[0].args._modules[0]);
           this.votingModule = await VotingModule.at(this.deployedModules[5]);
 
       this.newSecurityToken = await this.steRegistryV1
@@ -166,8 +162,8 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
       assert.equal(tickerSTAddress, this.newcontractAddress);
 
-      // Check module
-     // this.multiIssuanceModule = await MultipleIssuanceModule.new(this.newcontractAddress, {from: owner});
+      // First make sure the validator contract is hooked in
+      await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
 
       //// Make sure the token works
       this.token = await ERC1400.at(this.newcontractAddress);
@@ -177,14 +173,6 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const symbol = await this.token.symbol();
       assert.equal(symbol, thisTokenTicker);
 
-     // ControllersByPartition interesting method
-     //  await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
-     //  await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
-     //  // Important for a controller minter
-     //  await this.token.addMinter(controller);
-     //  await this.token.addMinter(this.multiIssuanceModule.address);
-
-
       // FOR ERC1820
        let interface1400Implementer = await this.registry.getInterfaceImplementer(this.token.address, soliditySha3(ERC1400_INTERFACE_NAME_STRING));
        assert.equal(interface1400Implementer, this.token.address);
@@ -192,14 +180,6 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       const isTickerCurrentlyRegisteredNow = await this.steRegistryV1.tickerAvailable(thisTokenTicker);
       assert.isFalse(isTickerCurrentlyRegisteredNow);
 
-      // Try issuing
-      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: owner});
-
-
-      await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
-
-
-      await this.token.issueByPartition(partition1, controller, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
       const newCheckpoint1 = await this.checkpointModule.createCheckpoint();
       assert.equal(1, newCheckpoint1.logs[0].args._checkpointId);
@@ -230,6 +210,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
           // Using bitwise OR to send what roles I want to the contract
          await this.validatorContract.addRolesMulti(
+             this.newcontractAddress,
              [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
                 [whitelistBytes | eligibleBytes,
                  whitelistBytes | friendsFamilyBytes,
@@ -242,21 +223,29 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
                 Array(6).fill(futureTime),
              {from: owner});
 
-          assert.equal(await this.validatorContract.isAllowlisted(tokenHolder), true);
-          assert.equal(await this.validatorContract.isAllowlisted(randomTokenHolder), true);
-          assert.equal(await this.validatorContract.isAllowlisted(recipient), true);
-          assert.equal(await this.validatorContract.isBlocklisted(tokenHolder), false);
-          assert.equal(await this.validatorContract.isBlocklisted(randomTokenHolder), false);
-          assert.equal(await this.validatorContract.isBlocklisted(recipient), false);
-          assert.equal(await this.validatorContract.isBlocklisted(blacklisted), true);
+          assert.equal(await this.validatorContract.isAllowlisted(this.newcontractAddress, tokenHolder), true);
+          assert.equal(await this.validatorContract.isAllowlisted(this.newcontractAddress, randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isAllowlisted(this.newcontractAddress, recipient), true);
+          assert.equal(await this.validatorContract.isBlocklisted(this.newcontractAddress, tokenHolder), false);
+          assert.equal(await this.validatorContract.isBlocklisted(this.newcontractAddress, randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isBlocklisted(this.newcontractAddress, recipient), false);
+          assert.equal(await this.validatorContract.isBlocklisted(this.newcontractAddress, blacklisted), true);
 
-          assert.equal(await this.validatorContract.isEligibleInvestor(tokenHolder), true);
-          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(recipient), true);
-          assert.equal(await this.validatorContract.isAccreditedInvestor(randomTokenHolder), true);
-          assert.equal(await this.validatorContract.isEmployeeInvestor(randomTokenHolder), false);
-          assert.equal(await this.validatorContract.isEmployeeInvestor(randomTokenHolder2), true);
-          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(blacklisted), true);
-          assert.equal(await this.validatorContract.isCorporateInvestor(controller), true);
+          assert.equal(await this.validatorContract.isEligibleInvestor(this.newcontractAddress, tokenHolder), true);
+          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(this.newcontractAddress, recipient), true);
+          assert.equal(await this.validatorContract.isAccreditedInvestor(this.newcontractAddress, randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isEmployeeInvestor(this.newcontractAddress, randomTokenHolder), false);
+          assert.equal(await this.validatorContract.isEmployeeInvestor(this.newcontractAddress, randomTokenHolder2), true);
+          assert.equal(await this.validatorContract.isFriendsFamilyInvestor(this.newcontractAddress, blacklisted), true);
+          assert.equal(await this.validatorContract.isCorporateInvestor(this.newcontractAddress, controller), true);
+
+          // Try issuing
+          await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: owner});
+
+          await this.token.issueByPartition(partition1, tokenHolder, issuanceAmount, VALID_CERTIFICATE, {from: controller});
+
+
+          await this.token.issueByPartition(partition1, controller, issuanceAmount, VALID_CERTIFICATE, {from: controller});
 
           // By Transferring by operator (controller) and then just a normal transferByPartition with a valid certificate
           await this.token.operatorTransferByPartition(partition1, tokenHolder, recipient, approvedAmount, ZERO_BYTE, ZERO_BYTE, { from: controller });
@@ -273,24 +262,17 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
               { from: unknown }
           );
 
-          console.log(balancesOfByPartition);
-
           const balancesOf = await this.balanceReader.balancesOf(
               [tokenHolder],
               [this.token.address],
               { from: unknown }
           );
 
-          console.log(balancesOf);
-
           const totalSuppliesByPartition = await this.balanceReader.totalSuppliesByPartition(
               [partition1],
               [this.token.address],
               { from: unknown }
           );
-
-          console.log('totalSuppliesByPartition');
-          console.log(totalSuppliesByPartition);
 
           this.issuancePartitions = [];
           this.tokenHolders = [];
@@ -348,13 +330,22 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       it('should revert trying to add a token with long ticker symbol', async function () {
       const thisTokenTicker = 'DAUUUUUUUUUU';
       const thisTokenName = 'ERC1400Token';
-      const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[0],
-                  protocolNames[1],
-                  protocolNames[2]]);
 
-      this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
+      // Deploy multiple issuance related module
+      const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+      this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
+      this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+
+      // Deploy checker related module
+      const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+      this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+
+      // Deploy validator related module
+      const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+      this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
         await expectRevert.unspecified(this.steRegistryV1
       .generateNewSecurityToken(
           thisTokenName,
@@ -429,42 +420,60 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       beforeEach(async function () {
         this.thisTokenTicker5 = 'DAU5';
         this.thisTokenName5 = 'ERC1400Token5';
-          const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[0],
-                  protocolNames[1],
-                  protocolNames[2]]);
 
-          this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
-        this.newSecurityToken = await this.steRegistryV1
+      // Deploy multiple issuance related module
+      const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+      this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
+      this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+
+      // Deploy checker related module
+      const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+      this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+
+      // Deploy validator related module
+      const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+      this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
+      this.newSecurityToken = await this.steRegistryV1
         .generateNewSecurityToken(
-            this.thisTokenName5,
-            this.thisTokenTicker5,
-            1,
-            [controller],
-            // CERTIFICATE_SIGNER,
-            // true,
-            partitions,
-            owner,
-            0,
-            this.deployedModules);
+        this.thisTokenName5,
+        this.thisTokenTicker5,
+        1,
+        [controller],
+        // CERTIFICATE_SIGNER,
+        // true,
+        partitions,
+        owner,
+        0,
+        this.deployedModules);
         let log = this.newSecurityToken.logs[3];
         this.newcontractAddress5 = log.args._securityTokenAddress;
 
         this.updatedTokenFactory = await STEFactory.new();
-       });
+      });
 
      describe('getTokensForOwner', function () {
       it('gets tokens for a specific owner', async function () {
         // Make a second token
         this.thisTokenTicker6 = 'DAU6';
-          const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-          (0,
-              [protocolNames[0],
-                  protocolNames[1],
-                  protocolNames[2]]);
 
-          this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
+      // Deploy multiple issuance related module
+      const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+      this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
+      this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+
+      // Deploy checker related module
+      const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+      this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+
+      // Deploy validator related module
+      const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+      this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+      this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+
         this.newSecurityToken = await this.steRegistryV1
         .generateNewSecurityToken(
             'ERC1400Token6',

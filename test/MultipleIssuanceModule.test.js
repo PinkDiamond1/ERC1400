@@ -64,15 +64,19 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
 
         this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, this.modulesDeployer.address, 0, 0, 1);
 
-        const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules(0,
-            [protocolNames[0],
-                protocolNames[1],
-                protocolNames[2]]);
-
-        this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
-
+        // Deploy multiple issuance related module
+        const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+        this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
         this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+
+        // Deploy checker related module
+        const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
         this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+
+        // Deploy validator related module
+        const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
         this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
 
         const thisTokenTicker = 'DAU';
@@ -96,16 +100,8 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
         // ***Multiple Issuance Module Created
         this.token = await ERC1400.at(this.newcontractAddress);
 
-        // ControllersByPartition interesting method
-        // console.log(await this.token.controllersByPartition(partition1));
-        // await this.token.setControllers([this.multiIssuanceModule.address, controller], {from: owner});
-        // await this.token.setPartitionControllers(partition1, [this.multiIssuanceModule.address, controller], {from: owner});
-        // // Important for a controller minter
-        // await this.token.addMinter(controller);
-        // await this.token.addMinter(this.multiIssuanceModule.address);
-        // await this.token.setTokenExtension(this.validatorContract.address, ERC1400_TOKENS_VALIDATOR_STRING, { from: owner });
-        // await this.token.setTokenExtension(this.checkerContract.address, ERC1400_TOKENS_CHECKER_STRING, { from: owner });
-        // await this.token.setTokenExtension(this.multiIssuanceModule.address, ERC1400_MULTIPLE_ISSUANCE_STRING, { from: owner });
+        // First make sure the validator contract is hooked in
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
 
         // Setup KYC Roles
         const whitelistBytes = 0b1;
@@ -121,6 +117,7 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
 
         // Using bitwise OR to send what roles I want to the contract
         await this.validatorContract.addRolesMulti(
+            this.newcontractAddress,
             [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
             [whitelistBytes | eligibleBytes,
                 whitelistBytes | friendsFamilyBytes,

@@ -143,22 +143,24 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
       const thisTokenName = 'ERC1400Token';
 
         const moduleDeploymentFromRegistry = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[0],
-                protocolNames[1],
-                protocolNames[2]]);
-
-        this.deployedModules = moduleDeploymentFromRegistry.logs[1].args._modules;
+        // Deploy multiple issuance related module
+        const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+        this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
         this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+
+        // Deploy checker related module
+        const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
         this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+
+        // Deploy validator related module
+        const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
         this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
 
         // Deploy checkpoint related module
-        const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules
-        (0,
-            [protocolNames[3]]);
-
-        this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+        const moduleDeploymentFromRegistry3 = await this.steRegistryV1.deployModules(0, [protocolNames[3]]);
+        this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
         this.checkpointModule = await CheckpointsModule.at(this.deployedModules[3]);
 
 
@@ -183,6 +185,8 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
         const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
         assert.equal(tickerSTAddress, this.newcontractAddress);
 
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
+
         //// Make sure the token works
         this.token = await ERC1400.at(this.newcontractAddress);
 
@@ -201,6 +205,7 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
         const futureTime = Math.round(new Date(2040,0).getTime()/1000);
         // Using bitwise OR to send what roles I want to the contract
         await this.validatorContract.addRolesMulti(
+            this.newcontractAddress,
             [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2, controller, blacklisted],
             [whitelistBytes | eligibleBytes,
                 whitelistBytes | friendsFamilyBytes,
