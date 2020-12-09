@@ -185,7 +185,7 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
         const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
         assert.equal(tickerSTAddress, this.newcontractAddress);
 
-        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, true, true, false, false, [controller, owner],{from: owner});
 
         //// Make sure the token works
         this.token = await ERC1400.at(this.newcontractAddress);

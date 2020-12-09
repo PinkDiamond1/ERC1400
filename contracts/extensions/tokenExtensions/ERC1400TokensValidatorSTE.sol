@@ -27,7 +27,6 @@ contract ERC1400TokensValidatorSTE is
   IERC1400TokensValidator,
   Ownable,
   Pausable,
-  CertificateSignerRole,
   RoleManagement,
   ERC1820Client,
   ERC1820Implementer {
@@ -57,19 +56,19 @@ contract ERC1400TokensValidatorSTE is
   mapping(address => bool) internal _blocklistActivated;
 
   // Mapping from token to certificate activation status.
-  mapping(address => CertificateValidation) internal _certificateActivated;
+  //mapping(address => CertificateValidation) internal _certificateActivated;
 
-  enum CertificateValidation {
-    None,
-    NonceBased,
-    SaltBased
-  }
+//  enum CertificateValidation {
+//    None,
+//    NonceBased,
+//    SaltBased
+//  }
 
   // Mapping from (token, certificateNonce) to "used" status to ensure a certificate can be used only once
-  mapping(address => mapping(address => uint256)) internal _usedCertificateNonce;
+ // mapping(address => mapping(address => uint256)) internal _usedCertificateNonce;
 
   // Mapping from (token, certificateSalt) to "used" status to ensure a certificate can be used only once
-  mapping(address => mapping(bytes32 => bool)) internal _usedCertificateSalt;
+ // mapping(address => mapping(bytes32 => bool)) internal _usedCertificateSalt;
 
   // Mapping from token to partition granularity activation status.
   mapping(address => bool) internal _granularityByPartitionActivated;
@@ -169,16 +168,16 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Modifier to verify if sender is a pauser.
    */
-  modifier onlyCertificateSigner(address token) {
-    require(
-      msg.sender == token ||
-      msg.sender == Ownable(token).owner() ||
-      _isTokenController[token][msg.sender] ||
-      isCertificateSigner(token, msg.sender),
-      "Sender is not a certificate signer"
-    );
-    _;
-  }
+//  modifier onlyCertificateSigner(address token) {
+//    require(
+//      msg.sender == token ||
+//      msg.sender == Ownable(token).owner() ||
+//      _isTokenController[token][msg.sender] ||
+//      isCertificateSigner(token, msg.sender),
+//      "Sender is not a certificate signer"
+//    );
+//    _;
+//  }
 
 //  /**
 //   * @dev Modifier to verify if sender is an allowlist admin.
@@ -220,9 +219,9 @@ contract ERC1400TokensValidatorSTE is
    * @dev Get the list of token controllers for a given token.
    * @return Setup of a given token.
    */
-  function retrieveTokenSetup(address token) external view returns (CertificateValidation, bool, bool, bool, bool, address[] memory) {
+  function retrieveTokenSetup(address token) external view returns (bool, bool, bool, bool, address[] memory) {
     return (
-      _certificateActivated[token],
+//      _certificateActivated[token],
       _allowlistActivated[token],
       _blocklistActivated[token],
       _granularityByPartitionActivated[token],
@@ -236,14 +235,14 @@ contract ERC1400TokensValidatorSTE is
    */
   function registerTokenSetup(
     address token,
-    CertificateValidation certificateActivated,
+    // CertificateValidation certificateActivated,
     bool allowlistActivated,
     bool blocklistActivated,
     bool granularityByPartitionActivated,
     bool holdsActivated,
     address[] calldata operators
   ) external onlyAdmin() {
-    _certificateActivated[token] = certificateActivated;
+   // _certificateActivated[token] = certificateActivated;
     _allowlistActivated[token] = allowlistActivated;
     _blocklistActivated[token] = blocklistActivated;
     _granularityByPartitionActivated[token] = granularityByPartitionActivated;
@@ -294,10 +293,10 @@ contract ERC1400TokensValidatorSTE is
     view
     returns(bool)
   {
-    (bool canValidateToken,,) = _canValidateCertificateToken(token, payload, operator, operatorData.length != 0 ? operatorData : data);
-
-    canValidateToken = canValidateToken && _canValidateAllowlistAndBlocklistToken(token, payload, from, to);
-    
+//    (bool canValidateToken,,) = _canValidateCertificateToken(token, payload, operator, operatorData.length != 0 ? operatorData : data);
+//
+//    canValidateToken = canValidateToken && _canValidateAllowlistAndBlocklistToken(token, payload, from, to);
+    (bool canValidateToken) =  _canValidateAllowlistAndBlocklistToken(token, payload, from, to);
     canValidateToken = canValidateToken && !paused(token);
 
     canValidateToken = canValidateToken && _canValidateGranularToken(token, partition, value);
@@ -331,10 +330,10 @@ contract ERC1400TokensValidatorSTE is
   ) // Comments to avoid compilation warnings for unused variables.
     external
   {
-    (bool canValidateCertificateToken, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(msg.sender, payload, operator, operatorData.length != 0 ? operatorData : data);
-    require(canValidateCertificateToken, "54"); // 0x54	transfers halted (contract paused)
-
-    _useCertificateIfActivated(msg.sender, certificateControl, operator, salt);
+//    (bool canValidateCertificateToken, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(msg.sender, payload, operator, operatorData.length != 0 ? operatorData : data);
+//    require(canValidateCertificateToken, "54"); // 0x54	transfers halted (contract paused)
+//
+//    _useCertificateIfActivated(msg.sender, certificateControl, operator, salt);
 
     require(_canValidateAllowlistAndBlocklistToken(msg.sender, payload, from, to), "54"); // 0x54	transfers halted (contract paused)
 
@@ -358,58 +357,58 @@ contract ERC1400TokensValidatorSTE is
     }
   }
 
-  /**
-   * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
-   * @return 'true' if the token transfer can be validated, 'false' if not.
-   * @return hold ID in case a hold can be executed for the given parameters.
-   */
-  function _canValidateCertificateToken(
-    address token,
-    bytes memory payload,
-    address operator,
-    bytes memory certificate
-  )
-    internal
-    view
-    returns(bool, CertificateValidation, bytes32)
-  {
-    if(
-      _certificateActivated[token] > CertificateValidation.None &&
-      _functionSupportsCertificateValidation(payload) &&
-      !isCertificateSigner(token, operator) &&
-      address(this) != operator
-    ) {
-      if(_certificateActivated[token] == CertificateValidation.SaltBased) {
-        (bool valid, bytes32 salt) = _checkSaltBasedCertificate(
-          token,
-          operator,
-          payload,
-          certificate
-        );
-        if(valid) {
-          return (true, CertificateValidation.SaltBased, salt);
-        } else {
-          return (false, CertificateValidation.SaltBased, "");
-        }
-        
-      } else { // case when _certificateActivated[token] == CertificateValidation.NonceBased
-        if(
-          _checkNonceBasedCertificate(
-            token,
-            operator,
-            payload,
-            certificate
-          )
-        ) {
-          return (true, CertificateValidation.NonceBased, "");
-        } else {
-          return (false, CertificateValidation.SaltBased, "");
-        }
-      }
-    }
-
-    return (true, CertificateValidation.None, "");
-  }
+//  /**
+//   * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
+//   * @return 'true' if the token transfer can be validated, 'false' if not.
+//   * @return hold ID in case a hold can be executed for the given parameters.
+//   */
+//  function _canValidateCertificateToken(
+//    address token,
+//    bytes memory payload,
+//    address operator,
+//    bytes memory certificate
+//  )
+//    internal
+//    view
+//    returns(bool, CertificateValidation, bytes32)
+//  {
+//    if(
+//      _certificateActivated[token] > CertificateValidation.None &&
+//      _functionSupportsCertificateValidation(payload) &&
+//      !isCertificateSigner(token, operator) &&
+//      address(this) != operator
+//    ) {
+//      if(_certificateActivated[token] == CertificateValidation.SaltBased) {
+//        (bool valid, bytes32 salt) = _checkSaltBasedCertificate(
+//          token,
+//          operator,
+//          payload,
+//          certificate
+//        );
+//        if(valid) {
+//          return (true, CertificateValidation.SaltBased, salt);
+//        } else {
+//          return (false, CertificateValidation.SaltBased, "");
+//        }
+//
+//      } else { // case when _certificateActivated[token] == CertificateValidation.NonceBased
+//        if(
+//          _checkNonceBasedCertificate(
+//            token,
+//            operator,
+//            payload,
+//            certificate
+//          )
+//        ) {
+//          return (true, CertificateValidation.NonceBased, "");
+//        } else {
+//          return (false, CertificateValidation.SaltBased, "");
+//        }
+//      }
+//    }
+//
+//    return (true, CertificateValidation.None, "");
+//  }
 
   /**
    * @dev Verify if a token transfer can be executed or not, on the validator's perspective.
@@ -427,8 +426,9 @@ contract ERC1400TokensValidatorSTE is
     returns(bool)
   {
     if(
-      !_functionSupportsCertificateValidation(payload) ||
-      _certificateActivated[token] == CertificateValidation.None
+      !_functionSupportsCertificateValidation(payload)
+//    ||
+//      _certificateActivated[token] == CertificateValidation.None
     ) {
       if(_allowlistActivated[token]) {
         if(from != address(0) && !isAllowlisted(token, from)) {
@@ -557,8 +557,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 timeToExpiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+    //bytes calldata certificate
   )
     external
     returns (bool)
@@ -572,8 +572,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       _computeExpiration(timeToExpiration),
-      secretHash,
-      certificate
+      secretHash
+     // certificate
     );
   }
 
@@ -588,8 +588,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 expiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+   // bytes calldata certificate
   )
     external
     returns (bool)
@@ -605,8 +605,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       expiration,
-      secretHash,
-      certificate
+      secretHash
+    //  certificate
     );
   }
 
@@ -621,8 +621,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 timeToExpiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+   // bytes calldata certificate
   ) 
     external
     returns (bool)
@@ -636,8 +636,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       _computeExpiration(timeToExpiration),
-      secretHash,
-      certificate
+      secretHash
+     // certificate
     );
   }
 
@@ -652,8 +652,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 expiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+   // bytes calldata certificate
   )
     external
     returns (bool)
@@ -669,8 +669,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       expiration,
-      secretHash,
-      certificate
+      secretHash
+    //  certificate
     );
   }
 
@@ -686,8 +686,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 timeToExpiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+  //  bytes calldata certificate
   )
     external
     returns (bool)
@@ -702,8 +702,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       _computeExpiration(timeToExpiration),
-      secretHash,
-      certificate
+      secretHash
+     // certificate
     );
   }
 
@@ -719,8 +719,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 expiration,
-    bytes32 secretHash,
-    bytes calldata certificate
+    bytes32 secretHash
+   // bytes calldata certificate
   )
     external
     returns (bool)
@@ -737,8 +737,8 @@ contract ERC1400TokensValidatorSTE is
       partition,
       value,
       expiration,
-      secretHash,
-      certificate
+      secretHash
+    //  certificate
     );
   }
 
@@ -754,8 +754,8 @@ contract ERC1400TokensValidatorSTE is
     bytes32 partition,
     uint256 value,
     uint256 expiration,
-    bytes32 secretHash,
-    bytes memory certificate
+    bytes32 secretHash
+   // bytes memory certificate
   ) internal returns (bool)
   {
     Hold storage newHold = _holds[token][holdId];
@@ -765,7 +765,8 @@ contract ERC1400TokensValidatorSTE is
     require(newHold.value == 0, "This holdId already exists");
     require(notary != address(0), "Notary address must not be zero address");
     require(
-      _canHoldOrCanPreHold(token, msg.sender, sender, certificate),
+      _canHoldOrCanPreHold(token, msg.sender, sender),
+      //_canHoldOrCanPreHold(token, msg.sender, sender, certificate),
       "A hold can only be created with adapted authorizations"
     );
     if (sender != address(0)) { // hold (tokens already exist)
@@ -847,23 +848,23 @@ contract ERC1400TokensValidatorSTE is
   /**
    * @dev Renew hold.
    */
-  function renewHold(address token, bytes32 holdId, uint256 timeToExpiration, bytes calldata certificate) external returns (bool) {
-    return _renewHold(token, holdId, _computeExpiration(timeToExpiration), certificate);
+  function renewHold(address token, bytes32 holdId, uint256 timeToExpiration) external returns (bool) {
+    return _renewHold(token, holdId, _computeExpiration(timeToExpiration));
   }
 
   /**
    * @dev Renew hold with expiration time.
    */
-  function renewHoldWithExpirationDate(address token, bytes32 holdId, uint256 expiration, bytes calldata certificate) external returns (bool) {
+  function renewHoldWithExpirationDate(address token, bytes32 holdId, uint256 expiration) external returns (bool) {
     _checkExpiration(expiration);
 
-    return _renewHold(token, holdId, expiration, certificate);
+    return _renewHold(token, holdId, expiration);
   }
 
   /**
    * @dev Renew hold.
    */
-  function _renewHold(address token, bytes32 holdId, uint256 expiration, bytes memory certificate) internal returns (bool) {
+  function _renewHold(address token, bytes32 holdId, uint256 expiration) internal returns (bool) {
     Hold storage renewableHold = _holds[token][holdId];
 
     require(
@@ -874,7 +875,8 @@ contract ERC1400TokensValidatorSTE is
     require(!_isExpired(renewableHold.expiration), "An expired hold can not be renewed");
 
     require(
-      _canHoldOrCanPreHold(token, msg.sender, renewableHold.sender, certificate),
+      _canHoldOrCanPreHold(token, msg.sender, renewableHold.sender),
+//      _canHoldOrCanPreHold(token, msg.sender, renewableHold.sender, certificate),
       "A hold can only be renewed with adapted authorizations"
     );
     
@@ -1279,14 +1281,15 @@ contract ERC1400TokensValidatorSTE is
    * @dev Check if hold (or pre-hold) can be created.
    * @return 'true' if the operator can create pre-holds, 'false' if not.
    */
-  function _canHoldOrCanPreHold(address token, address operator, address sender, bytes memory certificate) internal returns(bool) { 
-    (bool canValidateCertificate, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(token, msg.data, operator, certificate);
-    _useCertificateIfActivated(token, certificateControl, operator, salt);
+  function _canHoldOrCanPreHold(address token, address operator, address sender) internal returns(bool) {
+//    (bool canValidateCertificate, CertificateValidation certificateControl, bytes32 salt) = _canValidateCertificateToken(token, msg.data, operator, certificate);
+//    _useCertificateIfActivated(token, certificateControl, operator, salt);
 
     if (sender != address(0)) { // hold
-      return canValidateCertificate && (_isTokenController[token][operator] || operator == sender);
+      return (_isTokenController[token][operator] || operator == sender);
+//      return canValidateCertificate && (_isTokenController[token][operator] || operator == sender);
     } else { // pre-hold
-      return canValidateCertificate && IMinterRole(token).isMinter(operator); 
+      return IMinterRole(token).isMinter(operator);
     }
   }
 
@@ -1332,14 +1335,14 @@ contract ERC1400TokensValidatorSTE is
    * @param msgSender Transaction sender (only for nonce-based certificates).
    * @param salt Salt extracted from the certificate (only for salt-based certificates).
    */
-  function _useCertificateIfActivated(address token, CertificateValidation certificateControl, address msgSender, bytes32 salt) internal {
-    // Declare certificate as used
-    if (certificateControl == CertificateValidation.NonceBased) {
-      _usedCertificateNonce[token][msgSender] += 1;
-    } else if (certificateControl == CertificateValidation.SaltBased) {
-      _usedCertificateSalt[token][salt] = true;
-    }
-  }
+//  function _useCertificateIfActivated(address token, CertificateValidation certificateControl, address msgSender, bytes32 salt) internal {
+//    // Declare certificate as used
+//    if (certificateControl == CertificateValidation.NonceBased) {
+//      _usedCertificateNonce[token][msgSender] += 1;
+//    } else if (certificateControl == CertificateValidation.SaltBased) {
+//      _usedCertificateSalt[token][salt] = true;
+//    }
+//  }
 
   /**
    * @dev Extract function signature from payload.
@@ -1379,170 +1382,169 @@ contract ERC1400TokensValidatorSTE is
    * @param sender Address whom to check the counter of.
    * @return uint256 Number of transaction already sent for this token contract.
    */
-  function usedCertificateNonce(address token, address sender) external view returns (uint256) {
-    return _usedCertificateNonce[token][sender];
-  }
+//  function usedCertificateNonce(address token, address sender) external view returns (uint256) {
+//    return _usedCertificateNonce[token][sender];
+//  }
 
   /**
    * @dev Checks if a nonce-based certificate is correct
    * @param certificate Certificate to control
    */
-  function _checkNonceBasedCertificate(
-    address token,
-    address msgSender,
-    bytes memory payloadWithCertificate,
-    bytes memory certificate
-  )
-    internal
-    view
-    returns(bool)
-  {
-    // Certificate should be 97 bytes long
-    if (certificate.length != 97) {
-      return false;
-    }
-
-    uint256 e;
-    uint8 v;
-
-    // Extract certificate information and expiration time from payload
-    assembly {
-      // Retrieve expirationTime & ECDSA element (v) from certificate which is a 97 long bytes
-      // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
-      e := mload(add(certificate, 0x20))
-      v := byte(0, mload(add(certificate, 0x80)))
-    }
-
-    // Certificate should not be expired
-    if (e < now) {
-      return false;
-    }
-
-    if (v < 27) {
-      v += 27;
-    }
-
-    // Perform ecrecover to ensure message information corresponds to certificate
-    if (v == 27 || v == 28) {
-      // Extract certificate from payload
-      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(160));
-      for (uint i = 0; i < payloadWithCertificate.length.sub(160); i++) { // replace 4 bytes corresponding to function selector
-        payloadWithoutCertificate[i] = payloadWithCertificate[i];
-      }
-
-      // Pack and hash
-      bytes memory pack = abi.encodePacked(
-        msgSender,
-        token,
-        payloadWithoutCertificate,
-        e,
-        _usedCertificateNonce[token][msgSender]
-      );
-      bytes32 hash = keccak256(pack);
-
-      bytes32 r;
-      bytes32 s;
-      // Extract certificate information and expiration time from payload
-      assembly {
-        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
-        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
-        r := mload(add(certificate, 0x40))
-        s := mload(add(certificate, 0x60))
-      }
-
-      // Check if certificate match expected transactions parameters
-      if (isCertificateSigner(token, ecrecover(hash, v, r, s))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * @dev Get state of certificate (used or not).
-   * @param token Token address.
-   * @param salt First 32 bytes of certificate whose validity is being checked.
-   * @return bool 'true' if certificate is already used, 'false' if not.
-   */
-  function usedCertificateSalt(address token, bytes32 salt) external view returns (bool) {
-    return _usedCertificateSalt[token][salt];
-  }
-
-  /**
-   * @dev Checks if a salt-based certificate is correct
-   * @param certificate Certificate to control
-   */
-  function _checkSaltBasedCertificate(
-    address token,
-    address msgSender,
-    bytes memory payloadWithCertificate,
-    bytes memory certificate
-  )
-    internal
-    view
-    returns(bool, bytes32)
-  {
-    // Certificate should be 129 bytes long
-    if (certificate.length != 129) {
-      return (false, "");
-    }
-
-    bytes32 salt;
-    uint256 e;
-    uint8 v;
-
-    // Extract certificate information and expiration time from payload
-    assembly {
-      // Retrieve expirationTime & ECDSA elements from certificate which is a 97 long bytes
-      // Certificate encoding format is: <salt (32 bytes)>@<expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
-      salt := mload(add(certificate, 0x20))
-      e := mload(add(certificate, 0x40))
-      v := byte(0, mload(add(certificate, 0xa0)))
-    }
-
-    // Certificate should not be expired
-    if (e < now) {
-      return (false, "");
-    }
-
-    if (v < 27) {
-      v += 27;
-    }
-
-    // Perform ecrecover to ensure message information corresponds to certificate
-    if (v == 27 || v == 28) {
-      // Extract certificate from payload
-      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(192));
-      for (uint i = 0; i < payloadWithCertificate.length.sub(192); i++) { // replace 4 bytes corresponding to function selector
-        payloadWithoutCertificate[i] = payloadWithCertificate[i];
-      }
-
-      // Pack and hash
-      bytes memory pack = abi.encodePacked(
-        msgSender,
-        token,
-        payloadWithoutCertificate,
-        e,
-        salt
-      );
-      bytes32 hash = keccak256(pack);
-
-      bytes32 r;
-      bytes32 s;
-      // Extract certificate information and expiration time from payload
-      assembly {
-        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
-        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
-        r := mload(add(certificate, 0x60))
-        s := mload(add(certificate, 0x80))
-      }
-
-      // Check if certificate match expected transactions parameters
-      if (isCertificateSigner(token, ecrecover(hash, v, r, s)) && !_usedCertificateSalt[token][salt]) {
-        return (true, salt);
-      }
-    }
-    return (false, "");
-  }
-
+//  function _checkNonceBasedCertificate(
+//    address token,
+//    address msgSender,
+//    bytes memory payloadWithCertificate,
+//    bytes memory certificate
+//  )
+//    internal
+//    view
+//    returns(bool)
+//  {
+//    // Certificate should be 97 bytes long
+//    if (certificate.length != 97) {
+//      return false;
+//    }
+//
+//    uint256 e;
+//    uint8 v;
+//
+//    // Extract certificate information and expiration time from payload
+//    assembly {
+//      // Retrieve expirationTime & ECDSA element (v) from certificate which is a 97 long bytes
+//      // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+//      e := mload(add(certificate, 0x20))
+//      v := byte(0, mload(add(certificate, 0x80)))
+//    }
+//
+//    // Certificate should not be expired
+//    if (e < now) {
+//      return false;
+//    }
+//
+//    if (v < 27) {
+//      v += 27;
+//    }
+//
+//    // Perform ecrecover to ensure message information corresponds to certificate
+//    if (v == 27 || v == 28) {
+//      // Extract certificate from payload
+//      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(160));
+//      for (uint i = 0; i < payloadWithCertificate.length.sub(160); i++) { // replace 4 bytes corresponding to function selector
+//        payloadWithoutCertificate[i] = payloadWithCertificate[i];
+//      }
+//
+//      // Pack and hash
+//      bytes memory pack = abi.encodePacked(
+//        msgSender,
+//        token,
+//        payloadWithoutCertificate,
+//        e,
+//        _usedCertificateNonce[token][msgSender]
+//      );
+//      bytes32 hash = keccak256(pack);
+//
+//      bytes32 r;
+//      bytes32 s;
+//      // Extract certificate information and expiration time from payload
+//      assembly {
+//        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
+//        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+//        r := mload(add(certificate, 0x40))
+//        s := mload(add(certificate, 0x60))
+//      }
+//
+//      // Check if certificate match expected transactions parameters
+//      if (isCertificateSigner(token, ecrecover(hash, v, r, s))) {
+//        return true;
+//      }
+//    }
+//    return false;
+//  }
+//
+//  /**
+//   * @dev Get state of certificate (used or not).
+//   * @param token Token address.
+//   * @param salt First 32 bytes of certificate whose validity is being checked.
+//   * @return bool 'true' if certificate is already used, 'false' if not.
+//   */
+//  function usedCertificateSalt(address token, bytes32 salt) external view returns (bool) {
+//    return _usedCertificateSalt[token][salt];
+//  }
+//
+//  /**
+//   * @dev Checks if a salt-based certificate is correct
+//   * @param certificate Certificate to control
+//   */
+//  function _checkSaltBasedCertificate(
+//    address token,
+//    address msgSender,
+//    bytes memory payloadWithCertificate,
+//    bytes memory certificate
+//  )
+//    internal
+//    view
+//    returns(bool, bytes32)
+//  {
+//    // Certificate should be 129 bytes long
+//    if (certificate.length != 129) {
+//      return (false, "");
+//    }
+//
+//    bytes32 salt;
+//    uint256 e;
+//    uint8 v;
+//
+//    // Extract certificate information and expiration time from payload
+//    assembly {
+//      // Retrieve expirationTime & ECDSA elements from certificate which is a 97 long bytes
+//      // Certificate encoding format is: <salt (32 bytes)>@<expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+//      salt := mload(add(certificate, 0x20))
+//      e := mload(add(certificate, 0x40))
+//      v := byte(0, mload(add(certificate, 0xa0)))
+//    }
+//
+//    // Certificate should not be expired
+//    if (e < now) {
+//      return (false, "");
+//    }
+//
+//    if (v < 27) {
+//      v += 27;
+//    }
+//
+//    // Perform ecrecover to ensure message information corresponds to certificate
+//    if (v == 27 || v == 28) {
+//      // Extract certificate from payload
+//      bytes memory payloadWithoutCertificate = new bytes(payloadWithCertificate.length.sub(192));
+//      for (uint i = 0; i < payloadWithCertificate.length.sub(192); i++) { // replace 4 bytes corresponding to function selector
+//        payloadWithoutCertificate[i] = payloadWithCertificate[i];
+//      }
+//
+//      // Pack and hash
+//      bytes memory pack = abi.encodePacked(
+//        msgSender,
+//        token,
+//        payloadWithoutCertificate,
+//        e,
+//        salt
+//      );
+//      bytes32 hash = keccak256(pack);
+//
+//      bytes32 r;
+//      bytes32 s;
+//      // Extract certificate information and expiration time from payload
+//      assembly {
+//        // Retrieve ECDSA elements (r, s) from certificate which is a 97 long bytes
+//        // Certificate encoding format is: <expirationTime (32 bytes)>@<r (32 bytes)>@<s (32 bytes)>@<v (1 byte)>
+//        r := mload(add(certificate, 0x60))
+//        s := mload(add(certificate, 0x80))
+//      }
+//
+//      // Check if certificate match expected transactions parameters
+//      if (isCertificateSigner(token, ecrecover(hash, v, r, s)) && !_usedCertificateSalt[token][salt]) {
+//        return (true, salt);
+//      }
+//    }
+//    return (false, "");
+//  }
 }

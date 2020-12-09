@@ -163,7 +163,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       assert.equal(tickerSTAddress, this.newcontractAddress);
 
       // First make sure the validator contract is hooked in
-      await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
+      await this.validatorContract.registerTokenSetup(this.newcontractAddress, true, true, false, false, [controller, owner],{from: owner});
 
       //// Make sure the token works
       this.token = await ERC1400.at(this.newcontractAddress);

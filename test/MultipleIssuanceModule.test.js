@@ -101,7 +101,7 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
         this.token = await ERC1400.at(this.newcontractAddress);
 
         // First make sure the validator contract is hooked in
-        await this.validatorContract.registerTokenSetup(this.newcontractAddress, 0, true, true, false, false, [controller, owner],{from: owner});
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, true, true, false, false, [controller, owner],{from: owner});
 
         // Setup KYC Roles
         const whitelistBytes = 0b1;
