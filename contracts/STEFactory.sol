@@ -48,7 +48,7 @@ contract STEFactory is ISTEFactory {
         }
         allControllers[_controllers.length] = _hookContracts[0];
 
-        contractDeployment.addMinter(_owner);
+        contractDeployment.addMinter(msg.sender);
         // Add minters all controllers
          for (uint j = 0; j<allControllers.length; j++){
              contractDeployment.addMinter(allControllers[j]);
@@ -62,8 +62,8 @@ contract STEFactory is ISTEFactory {
             contractDeployment.setPartitionControllers(_defaultPartitions[j], allControllers);
         }
 
-        // Set the owner of the ERC1400 contract to registry for now
-        contractDeployment.transferOwnership(msg.sender);
+        // Set the owner of the ERC1400 contract to registry (the owner that was added)
+        contractDeployment.transferOwnership(_owner);
 
         return securityToken;
     }

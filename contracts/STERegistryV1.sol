@@ -236,91 +236,102 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     }
 
 
-    /**
-    * @notice Deploys an instance of a new Security Token and records it to the registry
-    * @param _name is the name of the token
-    * @param _ticker is the ticker symbol of the security token
-    * @param _granularity is the number of granularity of the Security Token
-    * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
-    * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
-    * @param _protocolVersion Version of securityToken contract
-    * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
-    * - if _protocolVersion == 0 then latest version of securityToken will be generated
-    * @param _deployedModules These must be MIM, Validator, Checker, and then any others
-    */
-    function generateNewSecurityToken(
-        string memory _name,
+//    /**
+//    * @notice Deploys an instance of a new Security Token and records it to the registry
+//    * @param _name is the name of the token
+//    * @param _ticker is the ticker symbol of the security token
+//    * @param _granularity is the number of granularity of the Security Token
+//    * @param _controllers Issuer controllers whom will be able to do force transfer, redemptions, etc
+//    * @param _defaultPartitions An array of bytes32 representations of the  Whether to activate the certificates feature
+//    * @param _protocolVersion Version of securityToken contract
+//    * - `_protocolVersion` is the packed value of uin8[3] array (it will be calculated offchain)
+//    * - if _protocolVersion == 0 then latest version of securityToken will be generated
+//    * @param _deployedModules These must be MIM, Validator, Checker, and then any others
+//    */
+//    function generateNewSecurityToken(
+//        string memory _name,
+//        string memory _ticker,
+//        uint8 _granularity,
+//        address[] memory _controllers,
+//       // address _certificateSigner,
+//        // bool _certificateActivated,
+//        bytes32[] memory _defaultPartitions,
+//        address _owner,
+//        uint256 _protocolVersion,
+//        address[] memory _deployedModules
+//    )
+//        public
+//        //whenNotPausedOrOwner
+//        onlyOwner
+//        returns(address securityTokenAddress)
+//    {
+//        require(bytes(_name).length > 0 && bytes(_ticker).length > 1 && bytes(_ticker).length <11 , "Bad ticker");
+//        if (_protocolVersion == 0) {
+//            _protocolVersion = getUintValue(LATEST_VERSION);
+//        }
+//        _ticker = Util.upper(_ticker);
+//        bytes32 statusKey = Encoder.getKey("registeredTickers_status", _ticker);
+//        require(!getBoolValue(statusKey), "Already deployed");
+//        set(statusKey, true);
+//
+//        address newSecurityTokenAddress =
+//            _deployToken(
+//                    _name,
+//                    _ticker,
+//                    _granularity,
+//                    _controllers,
+//                    // _certificateSigner,
+//                    // _certificateActivated,
+//                    _defaultPartitions,
+//                    _owner,
+//                    _protocolVersion,
+//                    _deployedModules);
+//
+//         emit NewSecurityToken(
+//                _ticker, _name, newSecurityTokenAddress, _owner, now, msg.sender, true, _protocolVersion);
+//        return newSecurityTokenAddress;
+//    }
+//
+//    function _deployToken(
+//        string memory _name,
+//        string memory _ticker,
+//        uint8 _granularity,
+//        address[] memory _controllers,
+//    // address _certificateSigner,
+//    // bool _certificateActivated,
+//        bytes32[] memory _defaultPartitions,
+//        address _owner,
+//        uint256 _protocolVersion,
+//        address [] memory _deployedModules // Must include first 3 modules in ext protocols, rest are optional
+//    )
+//    internal
+//    returns(address securityTokenAddress)
+//    {
+//        return ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
+//            _name,
+//            _ticker,
+//            _granularity,
+//            _controllers,
+//        // _certificateSigner,
+//        // _certificateActivated,
+//            _defaultPartitions,
+//            _owner,
+//        // extensionProtocolNames,
+//            _deployedModules
+//        );
+//    }
+
+    function setupToken(
+        address _newSecurityTokenAddress,
         string memory _ticker,
-        uint8 _granularity,
-        address[] memory _controllers,
-       // address _certificateSigner,
-        // bool _certificateActivated,
-        bytes32[] memory _defaultPartitions,
         address _owner,
-        uint256 _protocolVersion,
-        address[] memory _deployedModules
-    )
-        public
-        //whenNotPausedOrOwner
-        onlyOwner
-        returns(address securityTokenAddress)
-    {
-        require(bytes(_name).length > 0 && bytes(_ticker).length > 1 && bytes(_ticker).length <11 , "Bad ticker");
-        if (_protocolVersion == 0) {
-            _protocolVersion = getUintValue(LATEST_VERSION);
-        }
-        _ticker = Util.upper(_ticker);
-        bytes32 statusKey = Encoder.getKey("registeredTickers_status", _ticker);
-        require(!getBoolValue(statusKey), "Already deployed");
-        set(statusKey, true);
-
-        address newSecurityTokenAddress =
-            _deployToken(
-                    _name,
-                    _ticker,
-                    _granularity,
-                    _controllers,
-                    // _certificateSigner,
-                    // _certificateActivated,
-                    _defaultPartitions,
-                    _owner,
-                    _protocolVersion,
-                    _deployedModules);
-
-         emit NewSecurityToken(
-                _ticker, _name, newSecurityTokenAddress, _owner, now, msg.sender, true, _protocolVersion);
-        return newSecurityTokenAddress;
-    }
-
-    function _deployToken(
-        string memory _name,
-        string memory _ticker,
-        uint8 _granularity,
-        address[] memory _controllers,
-        // address _certificateSigner,
-        // bool _certificateActivated,
-        bytes32[] memory _defaultPartitions,
-        address _owner,
-        uint256 _protocolVersion,
         address [] memory _deployedModules // Must include first 3 modules in ext protocols, rest are optional
     )
-        internal
-        returns(address securityTokenAddress)
+    public
+    onlyOwner
+    returns(address securityTokenAddress)
     {
         bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
-
-        address newSecurityTokenAddress = ISTEFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
-            _name,
-            _ticker,
-            _granularity,
-            _controllers,
-            // _certificateSigner,
-            // _certificateActivated,
-            _defaultPartitions,
-            _owner,
-            // extensionProtocolNames,
-            _deployedModules
-        );
 
         // Make sure the owner has the admin role they need on the Validator roles
         AdminRole(_deployedModules[1]).addAdmin(_owner);
@@ -329,19 +340,19 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         for (uint j = 0; j<_deployedModules.length; j++){
             // Checker and validator not compatible
             if(j != 1 && j != 2){
-                IConfigurableModule(_deployedModules[j]).configure(newSecurityTokenAddress);
+                IConfigurableModule(_deployedModules[j]).configure(_newSecurityTokenAddress);
             }
             // Might be able to use some of the new token extension method to our advantage
-            IFetchSupplyAndHooks(newSecurityTokenAddress).setTokenExtension(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]), false, false, false);
+            IFetchSupplyAndHooks(_newSecurityTokenAddress).setTokenExtension(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]), false, false, false);
         }
 
-        IOwnable(newSecurityTokenAddress).transferOwnership(_owner);
+        IOwnable(_newSecurityTokenAddress).transferOwnership(_owner);
 
         /*solium-disable-next-line security/no-block-members*/
         _setTickerOwnership(_owner, _ticker);
-        _storeSecurityTokenData(newSecurityTokenAddress, _ticker, now, _owner);
-        set(Encoder.getKey("tickerToSecurityToken", _ticker), newSecurityTokenAddress);
-        return newSecurityTokenAddress;
+        _storeSecurityTokenData(_newSecurityTokenAddress, _ticker, now, _owner);
+        set(Encoder.getKey("tickerToSecurityToken", _ticker), _newSecurityTokenAddress);
+        return _newSecurityTokenAddress;
     }
 
     function stringToBytes32(string memory source) public pure returns (bytes32 result) {

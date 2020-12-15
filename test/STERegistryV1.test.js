@@ -78,11 +78,10 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       this.tokenFactory = await STEFactory.new();
 
       this.balanceReader = await BatchBalanceReader.new({from: owner});
-
       this.mimContractFactory = await MultipleIssuanceModuleFactory.new({ from: owner });
       this.checkpointsContractFactory = await CheckpointsModuleFactory.new({ from: owner });
-        this.dividendsContractFactory = await DividendsModuleFactory.new({ from: owner });
-        this.votingContractFactory = await VotingModuleFactory.new({ from: owner });
+      this.dividendsContractFactory = await DividendsModuleFactory.new({ from: owner });
+      this.votingContractFactory = await VotingModuleFactory.new({ from: owner });
       this.validatorContractFactory = await TokensValidatorFactory.new({ from: owner });
       this.checkerContractFactory = await TokensCheckerFactory.new({ from: owner });
 
@@ -90,11 +89,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           this.validatorContractFactory.address, this.checkerContractFactory.address, this.checkpointsContractFactory.address, this.dividendsContractFactory.address, this.votingContractFactory.address];
 
       this.modulesDeployer = await ModulesDeployer.new(protocolNames, factories, 0, 0, 1, {from:owner});
-
       this.steRegistryV1 = await STERegistryV1.new(this.tokenFactory.address, this.modulesDeployer.address, 0, 0, 1, {from: owner});
-
-      // this.validatorContract = await ERC1400TokensValidator.new(true, false, { from: owner });
-      // this.checkerContract = await ERC1400TokensChecker.new( { from: owner });
     });
 
     describe('initializeReverts', function () {
@@ -141,22 +136,35 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           this.deployedModules.push(moduleDeploymentFromRegistry5.logs[0].args._modules[0]);
           this.votingModule = await VotingModule.at(this.deployedModules[5]);
 
-      this.newSecurityToken = await this.steRegistryV1
-      .generateNewSecurityToken(
-          thisTokenName,
-          thisTokenTicker,
-          1,
-          [controller],
-          //controller,
-          //true,
-          partitions,
-          owner,
-          0,
-          this.deployedModules);
+      // this.newSecurityToken = await this.steRegistryV1
+      // .generateNewSecurityToken(
+      //     thisTokenName,
+      //     thisTokenTicker,
+      //     1,
+      //     [controller],
+      //     //controller,
+      //     //true,
+      //     partitions,
+      //     owner,
+      //     0,
+      //     this.deployedModules);
 
-      let log = this.newSecurityToken.logs[3];
-      this.newcontractAddress = log.args._securityTokenAddress;
+     this.newSecurityToken= await this.tokenFactory.deployToken(thisTokenName, thisTokenTicker, 1, [controller],
+         //CERTIFICATE_SIGNER, true,
+         partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random addr
+
+      let log = this.newSecurityToken.logs[0];
+      this.newcontractAddress = log.args._newContract;
       assert.isTrue(this.newcontractAddress.length >= 40);
+
+      // Finish setting up the token
+      await this.steRegistryV1
+          .setupToken(
+              this.newcontractAddress,
+              thisTokenTicker,
+              owner,
+              this.deployedModules // Must include first 3 modules in ext protocols, rest are optional
+          )
 
       // Get Security Token address from ticker
       const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
@@ -326,40 +334,40 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       });
     });
 
-    describe('addLongTickerReverts', function () {
-      it('should revert trying to add a token with long ticker symbol', async function () {
-      const thisTokenTicker = 'DAUUUUUUUUUU';
-      const thisTokenName = 'ERC1400Token';
-
-      // Deploy multiple issuance related module
-      const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
-      this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
-      this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
-
-      // Deploy checker related module
-      const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
-      this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
-      this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
-
-      // Deploy validator related module
-      const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
-      this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
-      this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
-
-        await expectRevert.unspecified(this.steRegistryV1
-      .generateNewSecurityToken(
-          thisTokenName,
-          thisTokenTicker,
-          1,
-          [controller],
-         // CERTIFICATE_SIGNER,
-         // true,
-          partitions,
-          owner,
-          0,
-          this.deployedModules))
-      });
-    });
+    // describe('addLongTickerReverts', function () {
+    //   it('should revert trying to add a token with long ticker symbol', async function () {
+    //   const thisTokenTicker = 'DAUUUUUUUUUU';
+    //   const thisTokenName = 'ERC1400Token';
+    //
+    //   // Deploy multiple issuance related module
+    //   const moduleDeploymentFromRegistry0 = await this.steRegistryV1.deployModules(0, [protocolNames[0]]);
+    //   this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
+    //   this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
+    //
+    //   // Deploy checker related module
+    //   const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
+    //   this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+    //   this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
+    //
+    //   // Deploy validator related module
+    //   const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
+    //   this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
+    //   this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
+    //
+    //     await expectRevert.unspecified(this.steRegistryV1
+    //   .generateNewSecurityToken(
+    //       thisTokenName,
+    //       thisTokenTicker,
+    //       1,
+    //       [controller],
+    //      // CERTIFICATE_SIGNER,
+    //      // true,
+    //       partitions,
+    //       owner,
+    //       0,
+    //       this.deployedModules))
+    //   });
+    // });
 
     describe('addExistingSecurityTokenToRegistry', function () {
       it('Add Existing Security Token To Registry with certificate controller feature', async function () {
@@ -436,20 +444,37 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
       this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
 
-      this.newSecurityToken = await this.steRegistryV1
-        .generateNewSecurityToken(
-        this.thisTokenName5,
-        this.thisTokenTicker5,
-        1,
-        [controller],
-        // CERTIFICATE_SIGNER,
-        // true,
-        partitions,
-        owner,
-        0,
-        this.deployedModules);
-        let log = this.newSecurityToken.logs[3];
-        this.newcontractAddress5 = log.args._securityTokenAddress;
+      // this.newSecurityToken = await this.steRegistryV1
+      //   .generateNewSecurityToken(
+      //   this.thisTokenName5,
+      //   this.thisTokenTicker5,
+      //   1,
+      //   [controller],
+      //   // CERTIFICATE_SIGNER,
+      //   // true,
+      //   partitions,
+      //   owner,
+      //   0,
+      //   this.deployedModules);
+
+          this.newSecurityToken= await this.tokenFactory.deployToken(this.thisTokenName5, this.thisTokenTicker5, 1, [controller],
+              //CERTIFICATE_SIGNER, true,
+              partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random addr
+
+          let log = this.newSecurityToken.logs[0];
+          this.newcontractAddress = log.args._newContract;
+          assert.isTrue(this.newcontractAddress.length >= 40);
+
+          // Finish setting up the token
+          await this.steRegistryV1
+              .setupToken(
+                  this.newcontractAddress,
+                  this.thisTokenTicker5,
+                  owner,
+                  this.deployedModules // Must include first 3 modules in ext protocols, rest are optional
+              )
+
+          this.newcontractAddress5 = this.newcontractAddress;
 
         this.updatedTokenFactory = await STEFactory.new();
       });
@@ -474,21 +499,25 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
       this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
       this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
 
-        this.newSecurityToken = await this.steRegistryV1
-        .generateNewSecurityToken(
-            'ERC1400Token6',
-            this.thisTokenTicker6 ,
-            1,
-            [controller],
-            // CERTIFICATE_SIGNER,
-            // true,
-            partitions,
-            owner,
-            0,
-            this.deployedModules);
+          this.newSecurityToken= await this.tokenFactory.deployToken(this.thisTokenName5, this.thisTokenTicker5, 1, [controller],
+              //CERTIFICATE_SIGNER, true,
+              partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random addr
 
-        let log = this.newSecurityToken.logs[3];
-        this.newcontractAddress6 = log.args._securityTokenAddress;
+          let log = this.newSecurityToken.logs[0];
+          this.newcontractAddress = log.args._newContract;
+          assert.isTrue(this.newcontractAddress.length >= 40);
+
+
+          // Finish setting up the token
+          await this.steRegistryV1
+              .setupToken(
+                  this.newcontractAddress,
+                  this.thisTokenTicker6,
+                  owner,
+                  this.deployedModules // Must include first 3 modules in ext protocols, rest are optional
+              )
+
+          this.newcontractAddress6 = this.newcontractAddress;
 
         const tickerOwner6 = await this.steRegistryV1.getTickerOwner(this.thisTokenTicker6);
         assert.equal(tickerOwner6, owner);
