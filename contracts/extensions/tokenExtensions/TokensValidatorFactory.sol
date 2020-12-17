@@ -21,6 +21,8 @@ contract TokensValidatorFactory is IModuleFactory {
         // Launch the validator with admin and all features enabled
         ERC1400TokensValidatorSTE contractDeployment = new ERC1400TokensValidatorSTE(_admin);
 
+        contractDeployment.transferOwnership(_admin);
+
         emit ModuleDeployed(address(contractDeployment), _admin);
 
         return address(contractDeployment);

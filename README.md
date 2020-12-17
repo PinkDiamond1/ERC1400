@@ -553,18 +553,19 @@ https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 **TokensCheckerFactory**: 0xBC8F7290f1A3cb8d143c74e5De32E11E648fA631 
 
 **TokensValidatorFactory(LEGACY)**: 0xc0751134273CeeDEca2334d9BCCDe71EE11e6227 
-**TokensValidatorFactory(current)**: 0x3085B449B3bFf63fB8eaF5d47db11759f37fC7C6
-**TokensValidatorFactory(new)**: 0xd8fb4Ea2ec147B3AaE5D756a20cE9d556dDa52F7
-**TokensValidatorFactory(new)(new)**:0xa638b6f14ec42ff26aa2fafffb66d49ad7bedb9a
+**TokensValidatorFactory(LEGACY)**: 0x3085B449B3bFf63fB8eaF5d47db11759f37fC7C6
+**TokensValidatorFactory(NEW)**: 0x11501bd0750636cc0B162E6b33Bc73057aA0529e
 
 **ModulesDeployer**: 0x840C808EF3D3Ab9Cb4681F4C30f10f7579d64DE8
-**ModulesDeployer(new)**: 0x881da625a8701c8124f9d9c6861b21eef55b5de8
+**ModulesDeployer(NEW)**: 0x881da625a8701c8124f9d9c6861b21eef55b5de8
 
-**STEFactory(current)**: 0x45d3547EFed5979f9E98147C295E445CdEC00FF7 //TODO
-**STEFactory(new)**: 0xEAb23808aF008Df4C1ce770847d17F246488e1a4
+**STEFactory(legacy)**: 0x45d3547EFed5979f9E98147C295E445CdEC00FF7 //TODO
+**STEFactory(legacy)**: 0xEAb23808aF008Df4C1ce770847d17F246488e1a4
+**STEFactory(new)**: 0xc881C0a7DE0F98EE8B1E37a92E4A3f0143b36207
 
 **STERegistryV1**: 0x764D39E2497c25cfB52674A8621BC63524d32E79
-**STERegistryV1(new)**: 0x2cfa41f234f9c99139c7cD7E4a10c900aaF573AC
+**STERegistryV1(new)**: 0xDc573434e06EEDe200698153d889e1261C0b2307
+
 
 Parameters to deploy the ModulesDeployer above included:
 

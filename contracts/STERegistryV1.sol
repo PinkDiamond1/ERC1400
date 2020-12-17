@@ -13,7 +13,7 @@ import "./libraries/VersionUtils.sol";
 import "./libraries/DecimalMath.sol";
 import "./libraries/IOwnable.sol";
 import "./modules/IModulesDeployer.sol";
-import "./proxy/OwnedUpgradeabilityProxy.sol";
+//import "./proxy/OwnedUpgradeabilityProxy.sol";
 import "./modules/IConfigurableModule.sol";
 import "./extensions/tokenExtensions/rolesSTE/AdminRole.sol";
 import "erc1820/contracts/ERC1820Client.sol";
@@ -21,7 +21,7 @@ import "erc1820/contracts/ERC1820Client.sol";
 /**
  * @title Registry to keep track of registered tokens symbols and be able to deploy ERC1400 tokens from the STEFactory
  */
-contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
+contract STERegistryV1 is EternalStorage {
     /**
      * @notice state variables - these are the conceptual variables stored in eternal storage now.
 
@@ -331,10 +331,10 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
     onlyOwner
     returns(address securityTokenAddress)
     {
-        bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
+       bytes32[] memory extensionProtocolNames = getArrayBytes32(EXTENSION_PROTOCOLS);
 
         // Make sure the owner has the admin role they need on the Validator roles
-        AdminRole(_deployedModules[1]).addAdmin(_owner);
+        // AdminRole(_deployedModules[1]).addAdmin(_owner);
 
         // I set hooks on all the deployed modules with their corresponding extension names
         for (uint j = 0; j<_deployedModules.length; j++){
@@ -342,8 +342,7 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
             if(j != 1 && j != 2){
                 IConfigurableModule(_deployedModules[j]).configure(_newSecurityTokenAddress);
             }
-            // Might be able to use some of the new token extension method to our advantage
-            IFetchSupplyAndHooks(_newSecurityTokenAddress).setTokenExtension(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]), false, false, false);
+             IFetchSupplyAndHooks(_newSecurityTokenAddress).setTokenExtension(_deployedModules[j], bytes32ToString(extensionProtocolNames[j]), false, false, false);
         }
 
         IOwnable(_newSecurityTokenAddress).transferOwnership(_owner);
@@ -378,40 +377,40 @@ contract STERegistryV1 is EternalStorage, OwnedUpgradeabilityProxy {
         return string(bytesArray);
     }
 
-    /**
-     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the IERC1400 interface)
-     * @param _ticker is the ticker symbol of the security token
-     * @param _owner is the owner of the token
-     * @param _securityToken is the address of the securityToken
-     * @param _deployedAt is the timestamp at which the security token is deployed
-     */
-    function addExistingSecurityTokenToRegistry(
-        string memory _ticker,
-        address _owner,
-        address _securityToken,
-        uint256 _deployedAt
-    )
-        public
-        onlyOwner
-    {
-        require(bytes(_ticker).length <= 10, "Bad ticker");
-        require(_owner != address(0), "Bad owner");
-        string memory ticker = Util.upper(_ticker);
-        require(_securityToken != address(0), "Bad address");
-        if(_deployedAt == 0) {
-            _deployedAt = now;
-        }
-        uint256 registrationTime = getUintValue(Encoder.getKey("registeredTickers_registrationDate", ticker));
-        if (registrationTime == 0) {
-            registrationTime = now;
-        }
-        set(Encoder.getKey("tickerToSecurityToken", ticker), _securityToken);
-        _modifyTicker(_owner, ticker, registrationTime, true);
-        _storeSecurityTokenData(_securityToken, ticker, _deployedAt, _owner);
-        // Emit event with Protocol version of 0 for external security tokens.
-        emit NewSecurityToken(
-            ticker, IERC1400(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0));
-    }
+//    /**
+//     * @notice Adds a new custom Security Token and saves it to the registry. (Token should follow the IERC1400 interface)
+//     * @param _ticker is the ticker symbol of the security token
+//     * @param _owner is the owner of the token
+//     * @param _securityToken is the address of the securityToken
+//     * @param _deployedAt is the timestamp at which the security token is deployed
+//     */
+//    function addExistingSecurityTokenToRegistry(
+//        string memory _ticker,
+//        address _owner,
+//        address _securityToken,
+//        uint256 _deployedAt
+//    )
+//        public
+//        onlyOwner
+//    {
+//        require(bytes(_ticker).length <= 10, "Bad ticker");
+//        require(_owner != address(0), "Bad owner");
+//        string memory ticker = Util.upper(_ticker);
+//        require(_securityToken != address(0), "Bad address");
+//        if(_deployedAt == 0) {
+//            _deployedAt = now;
+//        }
+//        uint256 registrationTime = getUintValue(Encoder.getKey("registeredTickers_registrationDate", ticker));
+//        if (registrationTime == 0) {
+//            registrationTime = now;
+//        }
+//        set(Encoder.getKey("tickerToSecurityToken", ticker), _securityToken);
+//        _modifyTicker(_owner, ticker, registrationTime, true);
+//        _storeSecurityTokenData(_securityToken, ticker, _deployedAt, _owner);
+//        // Emit event with Protocol version of 0 for external security tokens.
+//        emit NewSecurityToken(
+//            ticker, IERC1400(_securityToken).name(), _securityToken, _owner, _deployedAt, msg.sender, true, uint256(0));
+//    }
 
 
     /**
