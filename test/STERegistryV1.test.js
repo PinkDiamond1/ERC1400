@@ -151,7 +151,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
      this.newSecurityToken= await this.tokenFactory.deployToken(thisTokenName, thisTokenTicker, 1, [controller],
          //CERTIFICATE_SIGNER, true,
-         partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random addr
+         partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random address
 
       let log = this.newSecurityToken.logs[0];
       this.newcontractAddress = log.args._newContract;

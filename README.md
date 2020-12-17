@@ -555,6 +555,7 @@ https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 **TokensValidatorFactory(LEGACY)**: 0xc0751134273CeeDEca2334d9BCCDe71EE11e6227 
 **TokensValidatorFactory(current)**: 0x3085B449B3bFf63fB8eaF5d47db11759f37fC7C6
 **TokensValidatorFactory(new)**: 0xd8fb4Ea2ec147B3AaE5D756a20cE9d556dDa52F7
+**TokensValidatorFactory(new)(new)**:0xa638b6f14ec42ff26aa2fafffb66d49ad7bedb9a
 
 **ModulesDeployer**: 0x840C808EF3D3Ab9Cb4681F4C30f10f7579d64DE8
 **ModulesDeployer(new)**: 0x881da625a8701c8124f9d9c6861b21eef55b5de8
@@ -563,8 +564,7 @@ https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 **STEFactory(new)**: 0xEAb23808aF008Df4C1ce770847d17F246488e1a4
 
 **STERegistryV1**: 0x764D39E2497c25cfB52674A8621BC63524d32E79
-**STERegistryV1(new)**: 0x764D39E2497c25cfB52674A8621BC63524d32E79
-
+**STERegistryV1(new)**: 0x2cfa41f234f9c99139c7cD7E4a10c900aaF573AC
 
 Parameters to deploy the ModulesDeployer above included:
 
