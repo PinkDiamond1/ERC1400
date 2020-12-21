@@ -148,12 +148,12 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
         this.deployedModules = moduleDeploymentFromRegistry0.logs[0].args._modules;
         this.multiIssuanceModule = await MultipleIssuanceModule.at(this.deployedModules[0]);
 
-        // Deploy checker related module
-        const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
-        this.deployedModules.push(moduleDeploymentFromRegistry1.logs[1].args._modules[0]);
+        // Deploy validator related module
+        const moduleDeploymentFromValidatorContract1 = await this.validatorContractFactory.deployModule(owner, {from: owner});
+        this.deployedModules.push(moduleDeploymentFromValidatorContract1.logs[0].args[0]);
         this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
 
-        // Deploy validator related module
+        // Deploy checker related module
         const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
         this.deployedModules.push(moduleDeploymentFromRegistry2.logs[0].args._modules[0]);
         this.checkerContract = await ERC1400TokensChecker.at(this.deployedModules[2]);
@@ -163,29 +163,29 @@ contract('CheckpointsModule', function ([owner, operator, controller, controller
         this.deployedModules.push(moduleDeploymentFromRegistry3.logs[0].args._modules[0]);
         this.checkpointModule = await CheckpointsModule.at(this.deployedModules[3]);
 
+        this.newSecurityToken= await this.tokenFactory.deployToken(thisTokenName, thisTokenTicker, 1, [controller],
+            //CERTIFICATE_SIGNER, true,
+            partitions, this.steRegistryV1.address, this.deployedModules, {from: owner}); //Random address
 
-        this.newSecurityToken = await this.steRegistryV1
-            .generateNewSecurityToken(
-                thisTokenName,
-                thisTokenTicker,
-                1,
-                [controller],
-                //controller,
-                //true,
-                partitions,
-                owner,
-                0,
-                this.deployedModules);
-
-        let log = this.newSecurityToken.logs[3];
-        this.newcontractAddress = log.args._securityTokenAddress;
+        let log = this.newSecurityToken.logs[0];
+        this.newcontractAddress = log.args._newContract;
         assert.isTrue(this.newcontractAddress.length >= 40);
+
+        // First make sure the validator contract is hooked in
+        await this.validatorContract.registerTokenSetup(this.newcontractAddress, true, true, false, false, [controller, owner],{from: owner});
+
+        // Finish setting up the token
+        await this.steRegistryV1
+            .setupToken(
+                this.newcontractAddress,
+                thisTokenTicker,
+                owner,
+                this.deployedModules // Must include first 3 modules in ext protocols, rest are optional
+            )
 
         // Get Security Token address from ticker
         const tickerSTAddress = await this.steRegistryV1.getSecurityTokenAddress(thisTokenTicker);
         assert.equal(tickerSTAddress, this.newcontractAddress);
-
-        await this.validatorContract.registerTokenSetup(this.newcontractAddress, true, true, false, false, [controller, owner],{from: owner});
 
         //// Make sure the token works
         this.token = await ERC1400.at(this.newcontractAddress);

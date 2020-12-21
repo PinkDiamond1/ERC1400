@@ -115,11 +115,9 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
           // const moduleDeploymentFromRegistry1 = await this.steRegistryV1.deployModules(0, [protocolNames[1]]);
           // this.deployedModules.push(moduleDeploymentFromRegistry1.logs[2].args._modules[0]);
           // this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
-
           const moduleDeploymentFromValidatorContract1 = await this.validatorContractFactory.deployModule(owner, {from: owner});
           this.deployedModules.push(moduleDeploymentFromValidatorContract1.logs[0].args[0]);
           this.validatorContract = await ERC1400TokensValidator.at(this.deployedModules[1]);
-
 
           // Deploy checker related module
           const moduleDeploymentFromRegistry2 = await this.steRegistryV1.deployModules(0, [protocolNames[2]]);
