@@ -244,7 +244,7 @@ contract('STERegistryV1', function ([owner, operator, controller, controller_alt
 
           assert.equal(await this.validatorContract.isEligibleInvestor(this.newcontractAddress, tokenHolder), true);
           assert.equal(await this.validatorContract.isFriendsFamilyInvestor(this.newcontractAddress, recipient), true);
-          assert.equal(await this.validatorContract.isAccreditedInvestor(this.newcontractAddress, randomTokenHolder), true);
+          assert.equal(await this.validatorContract.isAccreditedInvestor(randomTokenHolder), true);
           assert.equal(await this.validatorContract.isEmployeeInvestor(this.newcontractAddress, randomTokenHolder), false);
           assert.equal(await this.validatorContract.isEmployeeInvestor(this.newcontractAddress, randomTokenHolder2), true);
           assert.equal(await this.validatorContract.isFriendsFamilyInvestor(this.newcontractAddress, blacklisted), true);

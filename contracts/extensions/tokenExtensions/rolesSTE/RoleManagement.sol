@@ -21,6 +21,8 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     mapping(address => KYCValidity) public kycValidityMap;
     address[] public kycAddedUsers;
 
+    event MultiRolesAdded(address token, address[] accounts);
+
     event AllowlistedInvestorAdded(address token, address indexed account);
     event AllowlistedInvestorRemoved(address token, address indexed account);
 
@@ -30,8 +32,8 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     event FriendsFamilyInvestorAdded(address token, address indexed account);
     event FriendsFamilyInvestorRemoved(address token, address indexed account);
 
-    event AccreditedInvestorAdded(address token, address indexed account);
-    event AccreditedInvestorRemoved(address token, address indexed account);
+    event AccreditedInvestorAdded(address indexed account);
+    event AccreditedInvestorRemoved(address indexed account);
 
     event EligibleInvestorAdded(address token, address indexed account);
     event EligibleInvestorRemoved(address token, address indexed account);
@@ -47,7 +49,7 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     mapping(address => Roles.Role) private _allowlisteds; // 0
     mapping(address => Roles.Role) private _blocklisteds; // 1
     mapping(address => Roles.Role) private _friendsFamilyInvestors; // 2
-    mapping(address => Roles.Role) private _accreditedInvestors; // 3
+    Roles.Role private _accreditedInvestors; // 3 Is a global flag
     mapping(address => Roles.Role) private _eligibleInvestors; // 4
     mapping(address => Roles.Role) private _employeeInvestors; // 5
     mapping(address => Roles.Role) private _corporateInvestors; // 6
@@ -86,7 +88,7 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
                 addFriendsFamilyInvestor(token, kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(3))){
-                addAccreditedInvestor(token, kycUsers[i]);
+                addAccreditedInvestor(kycUsers[i]);
             }
             if(getBoolean(flags[i], uint256(4))){
                 addEligibleInvestor(token, kycUsers[i]);
@@ -98,6 +100,7 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
                 addCorporateInvestor(token, kycUsers[i]);
             }
         }
+        emit MultiRolesAdded(token, kycUsers);
     }
 
     // KYC expiry and valid timings (UTC)
@@ -194,26 +197,26 @@ contract RoleManagement is AdminRole, IKycAddedUsers {
     }
 
     // Accredited
-    function isAccreditedInvestor(address token, address account) public view returns (bool) {
-        return _accreditedInvestors[token].has(account);
+    function isAccreditedInvestor(address account) public view returns (bool) {
+        return _accreditedInvestors.has(account);
     }
 
-    function addAccreditedInvestor(address token, address account) public onlyAdmin {
-        _addAccreditedInvestor(token, account);
+    function addAccreditedInvestor(address account) public onlyAdmin {
+        _addAccreditedInvestor(account);
     }
 
-    function removeAccreditedInvestor(address token, address account) public onlyAdmin {
-        _removeAccreditedInvestor(token, account);
+    function removeAccreditedInvestor(address account) public onlyAdmin {
+        _removeAccreditedInvestor(account);
     }
 
-    function _addAccreditedInvestor(address token, address account) internal {
-        _accreditedInvestors[token].add(account);
-        emit AccreditedInvestorAdded(token, account);
+    function _addAccreditedInvestor(address account) internal {
+        _accreditedInvestors.add(account);
+        emit AccreditedInvestorAdded(account);
     }
 
-    function _removeAccreditedInvestor(address token, address account) internal {
-        _accreditedInvestors[token].remove(account);
-        emit AccreditedInvestorRemoved(token, account);
+    function _removeAccreditedInvestor(address account) internal {
+        _accreditedInvestors.remove(account);
+        emit AccreditedInvestorRemoved(account);
     }
 
     // Eligible
