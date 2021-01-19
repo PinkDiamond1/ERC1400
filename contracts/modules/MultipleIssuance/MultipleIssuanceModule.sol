@@ -90,6 +90,40 @@ contract MultipleIssuanceModule is Module, IConfigurableModule {
         .totalPartitionBalanceByTokenHolder[tokenHolder];
     }
 
+    /**
+     * @dev Get a batch of ERC1400 token balances by exemption and partition.
+     * @param exemptions Exemption names for all the balances needed.
+     * @param partitions Names of the partitions.
+     * @param tokenHolders Addresses of tokens where the balances need to be fetched.
+     * @return Balances array.
+     */
+    function balancesIssuedUnderExemptionByPartitionsAndTokenHolders(
+        address[] calldata tokenHolders,
+        bytes32[] calldata exemptions,
+        bytes32[] calldata partitions
+    ) external view returns (uint256[] memory) {
+        uint256[] memory partitionBalances = new uint256[](
+            exemptions.length * partitions.length * tokenHolders.length
+        );
+        uint256 index;
+        for (uint256 i = 0; i < tokenHolders.length; i++) {
+            for (uint256 j = 0; j < exemptions.length; j++) {
+                for (uint256 k = 0; k < partitions.length; k++) {
+                    index =
+                    i *
+                    (exemptions.length * partitions.length) +
+                    j *
+                    partitions.length +
+                    k;
+                    partitionBalances[index] = transactionIndexesToSender[exemptions[j]].exemptionMapByPartition[partitions[k]]
+                    .totalPartitionBalanceByTokenHolder[tokenHolders[i]];
+                }
+            }
+        }
+
+        return partitionBalances;
+    }
+
     function issueByPartitionMultiple(bytes32[] calldata exemptions, bytes32[] calldata partitions,
         address[] calldata tokenHolders,
         uint256[] calldata values,

@@ -223,6 +223,25 @@ contract('MultipleIssuanceModule', function ([owner, operator, controller, contr
               assert.equal(totalIssuedUnderDefaultExemptionPartition1ToRecipient, this.values[1]);
               assert.equal(totalIssuedUnderExemption2Partition2ToRandomTokenHolder, this.values[2]);
               assert.equal(totalIssuedUnderExemption3Partition3ToRandomTokenHolder2, this.values[3]);
+
+              const totalIssuedUnderToTokenHoldersBatch = await this.multiIssuanceModule.balancesIssuedUnderExemptionByPartitionsAndTokenHolders(
+                  [tokenHolder, recipient, randomTokenHolder, randomTokenHolder2], [defaultExemption, exemption2, exemption3], [partition1,  partition2, partition3]);
+
+              const lengthOfExemptions = 3;
+              const lengthOfPartitions = 3;
+              const entriesPerTokenHolder = lengthOfExemptions * lengthOfPartitions;
+
+              // Token holder 1
+              assert.equal(totalIssuedUnderToTokenHoldersBatch[0], this.values[0]);
+
+              // Token holder 2
+              assert.equal(totalIssuedUnderToTokenHoldersBatch[0 + (entriesPerTokenHolder)], this.values[1]);
+
+              // Token holder 3
+              assert.equal(totalIssuedUnderToTokenHoldersBatch[0 + ( 2 * entriesPerTokenHolder) + (1 * lengthOfExemptions) + 1], this.values[2]);
+
+              // Token holder 4
+              assert.equal(totalIssuedUnderToTokenHoldersBatch[0 + ( 3 * entriesPerTokenHolder) + (2 * lengthOfExemptions) + 2], this.values[3]);
           });
       });
   });
