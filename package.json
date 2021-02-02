@@ -109,6 +109,7 @@
     "openzeppelin-solidity": "2.1.3",
     "truffle": "5.0.1",
     "truffle-hdwallet-provider": "1.0.1",
+    "@truffle/hdwallet-provider": "1.0.18",
     "truffle-plugin-verify": "^0.3.10"
   },
   "resolutions": {

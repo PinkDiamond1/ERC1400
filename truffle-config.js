@@ -12,6 +12,10 @@ const infuraProvider = network => providerWithMnemonic(
   `https://${network}.infura.io/v3/${process.env.INFURA_API_KEY}`
 );
 
+const PrivateKeyProvider = require("@truffle/hdwallet-provider");
+const privateKey = '<private key>';
+const privateKeyProvider = new PrivateKeyProvider(privateKey, 'http://<ip>>:8545');
+
 const ropstenProvider = process.env.SOLIDITY_COVERAGE
   ? undefined
   : infuraProvider('ropsten');
@@ -40,6 +44,10 @@ module.exports = {
     kovan: {
       provider: kovanProvider,
       network_id: 42, // eslint-disable-line camelcase
+    },
+    besu: {
+       provider:  privateKeyProvider,
+      network_id: "*",
     },
     coverage: {
       host: 'localhost',
@@ -71,7 +79,7 @@ module.exports = {
       settings: {
         optimizer: {
           enabled: true, // Default: false
-          runs: 0, // Default: 200
+          runs: 200, // Default: 200
         },
       },
     },

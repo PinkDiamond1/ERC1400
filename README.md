@@ -542,7 +542,8 @@ https://kovan.etherscan.io/token/0x835735075656cf20f143dce40b509edc1ca56831
 
 **BatchBalanceReader** 0x635C2baDa50764C214d6529C4E5142EB4f9cb5f8
 
-**MultipleIssuanceModuleFactory**: 0x3aAEd08b227cdE3Faa5a405948b5bEB8E0d3a6a2
+**MultipleIssuanceModuleFactory (Legacy)**: 0x3aAEd08b227cdE3Faa5a405948b5bEB8E0d3a6a2
+**MultipleIssuanceModuleFactory (New)**: 0xf3490e9c7d0446B8499209a6A1669393D77A861e
 
 **VotingModuleFactory**: 0x99017d72BB3855eB553f202265a709889EfCC04B
 
