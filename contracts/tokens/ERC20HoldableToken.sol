@@ -222,6 +222,48 @@ contract ERC20HoldableToken is IERC20HoldableToken, ERC20Token {
     }
 
     /**
+     @notice Called by the notary at any time or the sender after the expiration date to release the held tokens back to the sender.
+     @param holdId a unique identifier for the hold.
+     */
+    function incrementHold(bytes32 holdId, uint256 amount) public isHeld(holdId) {
+        if (holds[holdId].sender == msg.sender) {
+            require(holds[holdId].notary == msg.sender, "incrementHold: caller must be the hold sender or notary.");
+        }
+
+        require(balanceOf(holds[holdId].sender) >= amount, "incrementHold: the amount must be less than or equal to the hold amount.");
+
+        holds[holdId].amount = holds[holdId].amount.add(amount);
+        accountHoldBalances[holds[holdId]
+            .sender] = accountHoldBalances[holds[holdId].sender].add(
+            amount
+        );
+        totalSupplyOnHold = totalSupplyOnHold.add(amount);
+
+        emit IncrementHold(holdId, amount);
+    }
+
+    /**
+     @notice Called by the notary at any time or the sender after the expiration date to release the held tokens back to the sender.
+     @param holdId a unique identifier for the hold.
+     */
+    function decrementHold(bytes32 holdId, uint256 amount) public isHeld(holdId) {
+        if (holds[holdId].sender == msg.sender) {
+            require(holds[holdId].notary == msg.sender, "incrementHold: caller must be the hold sender or notary.");
+        }
+
+        require(balanceOf(holds[holdId].sender) >= amount, "decrementHold: the amount must be less than or equal to the hold amount.");
+
+        holds[holdId].amount = holds[holdId].amount.sub(amount);
+        accountHoldBalances[holds[holdId]
+            .sender] = accountHoldBalances[holds[holdId].sender].sub(
+            amount
+        );
+        totalSupplyOnHold = totalSupplyOnHold.sub(amount);
+
+        emit DecrementHold(holdId, amount);
+    }
+
+    /**
      @notice Amount of tokens owned by an account that are available for transfer. That is, the gross balance less any held tokens.
      @param account owner of the tokensß
      */

@@ -19,6 +19,17 @@ interface IERC20HoldableToken {
         uint256 expirationDateTime,
         bytes32 lockHash
     );
+
+    event IncrementHold(
+        bytes32 indexed holdId,
+        uint256 amount
+    );
+
+    event DecrementHold(
+        bytes32 indexed holdId,
+        uint256 amount
+    );
+
     event ExecutedHold(
         bytes32 indexed holdId,
         bytes32 lockPreimage,

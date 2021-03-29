@@ -3,7 +3,6 @@ const ModulesDeployer = artifacts.require('./ModulesDeployer.sol');
 const Extension = artifacts.require('./ERC1400TokensValidatorSTE.sol');
 const TokensChecker = artifacts.require('./ERC1400TokensChecker.sol');
 const MultipleIssuanceModule = artifacts.require('./MultipleIssuanceModule.sol');
-
 const ERC1400 = artifacts.require('./ERC1400.sol');
 const MultipleIssuanceModuleFactory = artifacts.require('./MultipleIssuanceModuleFactory.sol');
 const TokensValidatorFactory = artifacts.require('./TokensValidatorFactory.sol');
@@ -22,6 +21,7 @@ const ERC1400_MULTIPLE_ISSUANCE = '0x455243313430304d756c7469706c6549737375616e6
 
 
 module.exports = async function (deployer, network, accounts) {
+  if (network == "test") return; // test maintains own contracts
   // Set up the STE Factory
   //bytes32[] memory _protocolNames, address[] memory _factoryAddresses, uint8 _major, uint8 _minor, uint8 _patch
   const mimFactory = await MultipleIssuanceModuleFactory.deployed();

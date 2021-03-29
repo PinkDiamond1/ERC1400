@@ -504,7 +504,12 @@ contract(
           assert.equal(await this.token.balanceOf(holder), 170);
         }
       });
-      it("Notary releases 30 tokens back to holder", async () => {
+      it("Notary increases and decrements hold, then releases 30 tokens back to holder", async () => {
+        const increment = await this.token.incrementHold(holdId, 5, {from: notary});
+        assert.equal(await this.token.balanceOf(holder), 165);
+        const decrement = await this.token.decrementHold(holdId, 5, {from: notary})
+        assert.equal(await this.token.balanceOf(holder), 170);
+
         const result = await this.token.releaseHold(holdId, { from: notary });
         assert.equal(
           await this.token.holdStatus(holdId),
