@@ -1,6 +1,8 @@
 pragma solidity 0.5.10;
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract UserWallets {
+    using SafeMath for uint256;
 
     struct Wallet {
         mapping(address => uint256) securityTokensIndex;
@@ -64,12 +66,12 @@ contract UserWallets {
         require(_stableCoins.length <= MAX_TOKENS, "UserWallets: Cannot process so many stablecoins at a time");
 
         for (uint i = 0; i < _securityTokens.length; i++) {
-            uint256 index = wallet.securityTokens.push(_securityTokens[i]);
+            uint256 index = wallet.securityTokens.push(_securityTokens[i]).sub(1);
             wallet.securityTokensIndex[_securityTokens[i]] = index;
         }
 
         for (uint i = 0; i < _stableCoins.length; i++) {
-            uint256 index = wallet.stableCoins.push(_stableCoins[i]);
+            uint256 index = wallet.stableCoins.push(_stableCoins[i]).sub(1);
             wallet.stableCoinsIndex[_stableCoins[i]] = index;
         }
 
@@ -100,13 +102,13 @@ contract UserWallets {
 
         for (uint i = 0; i < _securityTokens.length; i++) {
             if(!checkInSecurityTokenWallet(_user, _securityTokens[i])) {
-                uint256 index = wallet.securityTokens.push(_securityTokens[i]);
+                uint256 index = wallet.securityTokens.push(_securityTokens[i]).sub(1);
                 wallet.securityTokensIndex[_securityTokens[i]] = index;
             }
         }
         for (uint i = 0; i < _stableCoins.length; i++) {
             if(!checkInStableCoinWallet(_user, _stableCoins[i])) {
-                uint256 index = wallet.stableCoins.push(_stableCoins[i]);
+                uint256 index = wallet.stableCoins.push(_stableCoins[i]).sub(1);
                 wallet.stableCoinsIndex[_stableCoins[i]] = index;
             }
         }
@@ -142,7 +144,7 @@ contract UserWallets {
                 wallet.stableCoinsIndex[keyToMove] = rowToDelete;
                 wallet.stableCoins.length--;
                 delete(wallet.stableCoinsIndex[_stableCoins[i]]);
-            }
+           }
         }
 
         emit RemoveUserTokens(_user, _securityTokens, _stableCoins);
@@ -160,31 +162,33 @@ contract UserWallets {
         return (wallet.securityTokens[wallet.securityTokensIndex[_tokenAddress]] == _tokenAddress);
     }
 
-    function checkWalletsForTokens(address _user, address[] calldata _stableCoins, address[] calldata _securityTokens) external view returns (bool[] memory stableCoins, bool[] memory securityTokens){
-        bool[] memory a = new bool[](_stableCoins.length);
-        for (uint i=0; i< _stableCoins.length; i++) {
-            a[i] = checkInStableCoinWallet(_user, _stableCoins[i]);
+    function checkWalletsForTokens(address _user, address[] calldata _securityTokens, address[] calldata _stableCoins) external view returns (bool[] memory securityTokens, bool[] memory stableCoins){
+
+        bool[] memory a = new bool[](_securityTokens.length);
+        for (uint i=0; i < _securityTokens.length; i++) {
+            a[i] = checkInSecurityTokenWallet(_user, _securityTokens[i]);
         }
 
-        bool[] memory b = new bool[](_securityTokens.length);
-        for (uint i=0; i< _securityTokens.length; i++) {
-            b[i] = checkInSecurityTokenWallet(_user, _securityTokens[i]);
+        bool[] memory b = new bool[](_stableCoins.length);
+        for (uint i=0; i < _stableCoins.length; i++) {
+            b[i] = checkInStableCoinWallet(_user, _stableCoins[i]);
         }
 
         return (a,b);
     }
 
-    function getUserWallet(address _user) public view returns (address[] memory stableCoins, address[] memory securityTokens){
+    function getUserWallet(address _user) public view returns (address[] memory securityTokens, address[] memory stableCoins){
         Wallet storage wallet = userWallets[_user];
 
-        address[] memory a = new address[](wallet.stableCoins.length);
-        for (uint i=0; i< wallet.stableCoins.length; i++) {
-            a[i] = wallet.stableCoins[i];
+
+        address[] memory a = new address[](wallet.securityTokens.length);
+        for (uint i=0; i< wallet.securityTokens.length; i++) {
+            a[i] = wallet.securityTokens[i];
         }
 
-        address[] memory b = new address[](wallet.securityTokens.length);
-        for (uint i=0; i< wallet.securityTokens.length; i++) {
-            b[i] = wallet.securityTokens[i];
+        address[] memory b = new address[](wallet.stableCoins.length);
+        for (uint i=0; i< wallet.stableCoins.length; i++) {
+            b[i] = wallet.stableCoins[i];
         }
 
         return (a,b);
