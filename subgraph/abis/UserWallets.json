@@ -1,0 +1,294 @@
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "securityTokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "name": "stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "AddUserWallet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "RemoveUserWallet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "securityTokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "name": "stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "AddUserTokens",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "securityTokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "name": "stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "RemoveUserTokens",
+    "type": "event"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_owner",
+        "type": "address"
+      }
+    ],
+    "name": "setNewOwner",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_securityTokens",
+        "type": "address[]"
+      },
+      {
+        "name": "_stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "addUserWallet",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      }
+    ],
+    "name": "removeUserWallet",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_securityTokens",
+        "type": "address[]"
+      },
+      {
+        "name": "_stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "addUserTokens",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_securityTokens",
+        "type": "address[]"
+      },
+      {
+        "name": "_stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "removeUserTokens",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "checkInStableCoinWallet",
+    "outputs": [
+      {
+        "name": "isAddress",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_tokenAddress",
+        "type": "address"
+      }
+    ],
+    "name": "checkInSecurityTokenWallet",
+    "outputs": [
+      {
+        "name": "isAddress",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "name": "_securityTokens",
+        "type": "address[]"
+      },
+      {
+        "name": "_stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "name": "checkWalletsForTokens",
+    "outputs": [
+      {
+        "name": "securityTokens",
+        "type": "bool[]"
+      },
+      {
+        "name": "stableCoins",
+        "type": "bool[]"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserWallet",
+    "outputs": [
+      {
+        "name": "securityTokens",
+        "type": "address[]"
+      },
+      {
+        "name": "stableCoins",
+        "type": "address[]"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
