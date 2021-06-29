@@ -226,9 +226,9 @@ contract ERC20HoldableToken is IERC20HoldableToken, ERC20Token {
      @param holdId a unique identifier for the hold.
      */
     function incrementHold(bytes32 holdId, uint256 amount) public isHeld(holdId) {
-        if (holds[holdId].sender == msg.sender) {
+        //if (holds[holdId].sender == msg.sender) {
             require(holds[holdId].notary == msg.sender, "incrementHold: caller must be the hold sender or notary.");
-        }
+        //}
 
         require(balanceOf(holds[holdId].sender) >= amount, "incrementHold: the amount must be less than or equal to the hold amount.");
 
@@ -247,9 +247,9 @@ contract ERC20HoldableToken is IERC20HoldableToken, ERC20Token {
      @param holdId a unique identifier for the hold.
      */
     function decrementHold(bytes32 holdId, uint256 amount) public isHeld(holdId) {
-        if (holds[holdId].sender == msg.sender) {
+        //if (holds[holdId].sender == msg.sender) {
             require(holds[holdId].notary == msg.sender, "incrementHold: caller must be the hold sender or notary.");
-        }
+        //}
 
         require(balanceOf(holds[holdId].sender) >= amount, "decrementHold: the amount must be less than or equal to the hold amount.");
 
