@@ -1,5 +1,13 @@
 type UserWallet @entity {
   id: ID!
-  stableCoins: [String!]!
-  securityTokens: [String!]!
+  stableCoins: [StableCoin!]!
+  securityTokens: [SecurityToken!]!
 }
+
+type StableCoin @entity {
+   id: ID!
+ }
+
+type SecurityToken @entity {
+   id: ID!
+ }

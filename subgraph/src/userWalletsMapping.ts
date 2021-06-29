@@ -1,4 +1,4 @@
-import {UserWallet} from '../generated/schema'
+import {StableCoin, SecurityToken, UserWallet} from '../generated/schema'
 import {AddUserWallet} from "../generated/UserWallets/UserWallets";
 
 export function handleAddUserWallet(event: AddUserWallet): void {
@@ -10,11 +10,15 @@ export function handleAddUserWallet(event: AddUserWallet): void {
   let stableCoinArray = new Array<string>();
 
   for (let i = 0; i < event.params.securityTokens.length; i += 1) {
-    securityTokenArray.push(st[i].toHexString());
+    const securityTokenEntity = new SecurityToken(st[i].toHexString());
+    securityTokenEntity.save();
+    securityTokenArray.push(securityTokenEntity.id);
   }
 
   for (let i = 0; i < event.params.stableCoins.length; i += 1) {
-    stableCoinArray.push(sc[i].toHexString());
+    const stableCoinEntity = new StableCoin(st[i].toHexString());
+    stableCoinEntity.save();
+    stableCoinArray.push(stableCoinEntity.id);
   }
 
   userWallet.stableCoins = stableCoinArray;

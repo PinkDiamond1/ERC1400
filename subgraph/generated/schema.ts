@@ -60,3 +60,65 @@ export class UserWallet extends Entity {
     this.set("securityTokens", Value.fromStringArray(value));
   }
 }
+
+export class StableCoin extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id !== null, "Cannot save StableCoin entity without an ID");
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save StableCoin entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("StableCoin", id.toString(), this);
+  }
+
+  static load(id: string): StableCoin | null {
+    return store.get("StableCoin", id) as StableCoin | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+}
+
+export class SecurityToken extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id !== null, "Cannot save SecurityToken entity without an ID");
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save SecurityToken entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("SecurityToken", id.toString(), this);
+  }
+
+  static load(id: string): SecurityToken | null {
+    return store.get("SecurityToken", id) as SecurityToken | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+}
