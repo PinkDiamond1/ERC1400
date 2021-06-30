@@ -23,4 +23,10 @@ dataSources:
       eventHandlers:
         - event: AddUserWallet(address,address[],address[])
           handler: handleAddUserWallet
+        - event: AddUserTokens(address,address[],address[])
+          handler: handleAddUserTokens
+        - event: RemoveUserTokens(address,address[],address[])
+          handler: handleRemoveUserTokens
+        - event: RemoveUserWallet(address)
+          handler: handleRemoveUserWallet
       file: ./src/userWalletsMapping.ts
