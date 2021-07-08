@@ -6,9 +6,9 @@ schema:
 dataSources:
   - kind: ethereum/contract
     name: UserWallets
-    network: localhost
+    network: besu
     source:
-      address: '0x11aE288De0795756abEa5b35d2C1D9185df22ddE'
+      address: '0xf6319101B793d5491e8aAba0C14f0C9d3D78Fc86'
       startBlock: 1
       abi: UserWallets
     mapping:
