@@ -20,6 +20,10 @@ dataSources:
       abis:
         - name: UserWallets
           file: ./abis/UserWallets.json
+        - name: ERC20HoldableToken
+          file: ./abis/ERC20HoldableToken.json
+        - name: ERC1400
+          file: ./abis/ERC1400.json
       eventHandlers:
         - event: AddUserWallet(address,address[],address[])
           handler: handleAddUserWallet
@@ -30,3 +34,41 @@ dataSources:
         - event: RemoveUserWallet(address)
           handler: handleRemoveUserWallet
       file: ./src/userWalletsMapping.ts
+templates:
+   - name: ERC20HoldableToken
+     kind: ethereum/contract
+     network: besu
+     source:
+       abi: ERC20HoldableToken
+     mapping:
+       kind: ethereum/events
+       apiVersion: 0.0.4
+       language: wasm/assemblyscript
+       file: ./src/stablecoinMapping.ts
+       entities:
+         - ERC20HoldableToken
+       abis:
+         - name: ERC20HoldableToken
+           file: ./abis/ERC20HoldableToken.json
+       eventHandlers:
+         - event: Transfer(indexed address,indexed address,uint256)
+           handler: handleTransfer
+   - name: ERC1400
+     kind: ethereum/contract
+     network: besu
+     source:
+       abi: ERC1400
+     mapping:
+       kind: ethereum/events
+       apiVersion: 0.0.4
+       language: wasm/assemblyscript
+       file: ./src/securitytokenMapping.ts
+       entities:
+         - ERC1400
+       abis:
+         - name: ERC1400
+           file: ./abis/ERC1400.json
+       eventHandlers:
+         - event: Transfer(indexed address,indexed address,uint256)
+           handler: handleTransfer
+

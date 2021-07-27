@@ -6,8 +6,32 @@ type UserWallet @entity {
 
 type StableCoin @entity {
    id: ID!
+   symbol: String!
+   name: String!
+   decimals: BigInt!
+   balances: [UserStablecoinBalance!]!
  }
 
 type SecurityToken @entity {
    id: ID!
+   symbol: String!
+   name: String!
+   decimals: BigInt!
+   balances: [UserSTBalance!]!
+ }
+
+type UserSTBalance @entity {
+    id: ID!
+    partitions: [PartitionBalance!]!
+ }
+
+type PartitionBalance @entity {
+    id: ID!
+    balance: BigInt!
+ }
+
+type UserStablecoinBalance @entity {
+    id: ID!
+    balance: BigInt!
+    hold: BigInt!
  }

@@ -90,6 +90,42 @@ export class StableCoin extends Entity {
   set id(value: string) {
     this.set("id", Value.fromString(value));
   }
+
+  get symbol(): string {
+    let value = this.get("symbol");
+    return value.toString();
+  }
+
+  set symbol(value: string) {
+    this.set("symbol", Value.fromString(value));
+  }
+
+  get name(): string {
+    let value = this.get("name");
+    return value.toString();
+  }
+
+  set name(value: string) {
+    this.set("name", Value.fromString(value));
+  }
+
+  get decimals(): BigInt {
+    let value = this.get("decimals");
+    return value.toBigInt();
+  }
+
+  set decimals(value: BigInt) {
+    this.set("decimals", Value.fromBigInt(value));
+  }
+
+  get balances(): Array<string> {
+    let value = this.get("balances");
+    return value.toStringArray();
+  }
+
+  set balances(value: Array<string>) {
+    this.set("balances", Value.fromStringArray(value));
+  }
 }
 
 export class SecurityToken extends Entity {
@@ -120,5 +156,176 @@ export class SecurityToken extends Entity {
 
   set id(value: string) {
     this.set("id", Value.fromString(value));
+  }
+
+  get symbol(): string {
+    let value = this.get("symbol");
+    return value.toString();
+  }
+
+  set symbol(value: string) {
+    this.set("symbol", Value.fromString(value));
+  }
+
+  get name(): string {
+    let value = this.get("name");
+    return value.toString();
+  }
+
+  set name(value: string) {
+    this.set("name", Value.fromString(value));
+  }
+
+  get decimals(): BigInt {
+    let value = this.get("decimals");
+    return value.toBigInt();
+  }
+
+  set decimals(value: BigInt) {
+    this.set("decimals", Value.fromBigInt(value));
+  }
+
+  get balances(): Array<string> {
+    let value = this.get("balances");
+    return value.toStringArray();
+  }
+
+  set balances(value: Array<string>) {
+    this.set("balances", Value.fromStringArray(value));
+  }
+}
+
+export class UserSTBalance extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id !== null, "Cannot save UserSTBalance entity without an ID");
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save UserSTBalance entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("UserSTBalance", id.toString(), this);
+  }
+
+  static load(id: string): UserSTBalance | null {
+    return store.get("UserSTBalance", id) as UserSTBalance | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get partitions(): Array<string> {
+    let value = this.get("partitions");
+    return value.toStringArray();
+  }
+
+  set partitions(value: Array<string>) {
+    this.set("partitions", Value.fromStringArray(value));
+  }
+}
+
+export class PartitionBalance extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id !== null, "Cannot save PartitionBalance entity without an ID");
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save PartitionBalance entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("PartitionBalance", id.toString(), this);
+  }
+
+  static load(id: string): PartitionBalance | null {
+    return store.get("PartitionBalance", id) as PartitionBalance | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get balance(): BigInt {
+    let value = this.get("balance");
+    return value.toBigInt();
+  }
+
+  set balance(value: BigInt) {
+    this.set("balance", Value.fromBigInt(value));
+  }
+}
+
+export class UserStablecoinBalance extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(
+      id !== null,
+      "Cannot save UserStablecoinBalance entity without an ID"
+    );
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save UserStablecoinBalance entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("UserStablecoinBalance", id.toString(), this);
+  }
+
+  static load(id: string): UserStablecoinBalance | null {
+    return store.get(
+      "UserStablecoinBalance",
+      id
+    ) as UserStablecoinBalance | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get balance(): BigInt {
+    let value = this.get("balance");
+    return value.toBigInt();
+  }
+
+  set balance(value: BigInt) {
+    this.set("balance", Value.fromBigInt(value));
+  }
+
+  get hold(): BigInt {
+    let value = this.get("hold");
+    return value.toBigInt();
+  }
+
+  set hold(value: BigInt) {
+    this.set("hold", Value.fromBigInt(value));
   }
 }
