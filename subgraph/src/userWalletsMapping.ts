@@ -1,4 +1,4 @@
-import {StableCoin, SecurityToken, UserWallet} from '../generated/schema'
+import {StableCoin, SecurityToken, UserWallet, UserSecurityTokenBalance, UserStableCoinBalance} from '../generated/schema'
 
 import {log, BigInt} from "@graphprotocol/graph-ts/index";
 import {
@@ -39,12 +39,14 @@ export function handleAddUserWallet(event: AddUserWallet): void {
     ERC1400.create(st[i]);
 
 
-    const securityTokenEntity = new SecurityToken(st[i].toHexString());
+    let securityTokenEntity = SecurityToken.load(st[i].toHexString());
+    if(securityTokenEntity === null) {
+      securityTokenEntity = new SecurityToken(st[i].toHexString());
 
-    securityTokenEntity.symbol = ' ';
-    securityTokenEntity.name = ' ';
-    securityTokenEntity.decimals = ZERO;
-     securityTokenEntity.balances = new Array<string>();
+      securityTokenEntity.symbol = ' ';
+      securityTokenEntity.name = ' ';
+      securityTokenEntity.decimals = ZERO;
+    //  securityTokenEntity.balances = new Array<string>();
 
       let stContract = ERC1400Contract.bind(st[i]);
       let callResult = stContract.try_name();
@@ -55,21 +57,29 @@ export function handleAddUserWallet(event: AddUserWallet): void {
         securityTokenEntity.symbol = stContract.try_symbol().value;
         securityTokenEntity.decimals = BigInt.fromI32(stContract.try_decimals().value);
       }
-   // console.log(stContract.try_name());
-    securityTokenEntity.save();
-    securityTokenArray.push(securityTokenEntity.id);
+      // console.log(stContract.try_name());
+      securityTokenEntity.save();
+    }
+    const userSecurityTokenBalance = new UserSecurityTokenBalance(event.params.user.toHexString());
+    userSecurityTokenBalance.partitions = new Array<string>();
+    userSecurityTokenBalance.securityToken = securityTokenEntity.id;
+    userSecurityTokenBalance.save();
+    securityTokenArray.push(userSecurityTokenBalance.id);
   }
 
   for (let i = 0; i < event.params.stableCoins.length; i += 1) {
 
     ERC20HoldableToken.create(sc[i]);
 
-    const stableCoinEntity = new StableCoin(sc[i].toHexString());
+    let stableCoinEntity = StableCoin.load(sc[i].toHexString());
+    if(stableCoinEntity === null) {
+      stableCoinEntity = new StableCoin(sc[i].toHexString());
 
-    stableCoinEntity.symbol = ' ';
-    stableCoinEntity.name = ' ';
-    stableCoinEntity.decimals = ZERO;
-    stableCoinEntity.balances = new Array<string>();
+
+      stableCoinEntity.symbol = ' ';
+      stableCoinEntity.name = ' ';
+      stableCoinEntity.decimals = ZERO;
+    //  stableCoinEntity.balances = new Array<string>();
 
 
       let scContract = ERC20HoldableTokenContract.bind(sc[i]);
@@ -83,8 +93,15 @@ export function handleAddUserWallet(event: AddUserWallet): void {
         stableCoinEntity.decimals = BigInt.fromI32(scContract.try_decimals().value);
       }
 
-    stableCoinEntity.save();
-    stableCoinArray.push(stableCoinEntity.id);
+      stableCoinEntity.save();
+    }
+
+    const userStableCoinBalance = new UserStableCoinBalance(event.params.user.toHexString());
+    userStableCoinBalance.amount = ZERO;
+    userStableCoinBalance.hold = ZERO;
+    userStableCoinBalance.stableCoin = stableCoinEntity.id;
+    userStableCoinBalance.save();
+    stableCoinArray.push(userStableCoinBalance.id);
   }
 
   userWallet.stableCoins = stableCoinArray;
@@ -112,11 +129,13 @@ export function handleAddUserTokens(event: AddUserTokens): void {
   for (let i = 0; i < event.params.securityTokens.length; i += 1) {
     ERC1400.create(st[i]);
 
-    const securityTokenEntity = new SecurityToken(st[i].toHexString());
-    securityTokenEntity.symbol = ' ';
-    securityTokenEntity.name = ' ';
-    securityTokenEntity.decimals = ZERO;
-    securityTokenEntity.balances = new Array<string>();
+    let securityTokenEntity = SecurityToken.load(st[i].toHexString());
+    if(securityTokenEntity === null) {
+      securityTokenEntity = new SecurityToken(st[i].toHexString());
+      securityTokenEntity.symbol = ' ';
+      securityTokenEntity.name = ' ';
+      securityTokenEntity.decimals = ZERO;
+     // securityTokenEntity.balances = new Array<string>();
 
       let stContract = ERC1400Contract.bind(st[i]);
 
@@ -129,17 +148,26 @@ export function handleAddUserTokens(event: AddUserTokens): void {
         securityTokenEntity.decimals = BigInt.fromI32(stContract.try_decimals().value);
       }
 
-    securityTokenEntity.save();
-    securityTokenArray.push(securityTokenEntity.id);
+      securityTokenEntity.save();
+    }
+    const userSecurityTokenBalance = new UserSecurityTokenBalance(event.params.user.toHexString());
+    userSecurityTokenBalance.partitions = new Array<string>();
+    userSecurityTokenBalance.securityToken = securityTokenEntity.id;
+    userSecurityTokenBalance.save();
+
+    securityTokenArray.push(userSecurityTokenBalance.id);
   }
 
   for (let i = 0; i < event.params.stableCoins.length; i += 1) {
     ERC20HoldableToken.create(sc[i]);
-    const stableCoinEntity = new StableCoin(st[i].toHexString());
+
+    let stableCoinEntity = StableCoin.load(sc[i].toHexString());
+    if(stableCoinEntity === null) {
+      stableCoinEntity = new StableCoin(sc[i].toHexString());
     stableCoinEntity.symbol = ' ';
     stableCoinEntity.name = ' ';
     stableCoinEntity.decimals = ZERO;
-    stableCoinEntity.balances = new Array<string>();
+  //  stableCoinEntity.balances = new Array<string>();
 
       let scContract = ERC20HoldableTokenContract.bind(sc[i]);
 
@@ -153,7 +181,15 @@ export function handleAddUserTokens(event: AddUserTokens): void {
       }
 
     stableCoinEntity.save();
-    stableCoinArray.push(stableCoinEntity.id);
+    }
+
+    const userStableCoinBalance = new UserStableCoinBalance(event.params.user.toHexString());
+    userStableCoinBalance.amount = ZERO;
+    userStableCoinBalance.hold = ZERO;
+    userStableCoinBalance.stableCoin = stableCoinEntity.id;
+    userStableCoinBalance.save();
+
+    stableCoinArray.push(userStableCoinBalance.id);
   }
 
   userWallet.stableCoins = stableCoinArray;

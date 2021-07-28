@@ -1,7 +1,7 @@
 type UserWallet @entity {
   id: ID!
-  stableCoins: [StableCoin!]!
-  securityTokens: [SecurityToken!]!
+  stableCoins: [UserStableCoinBalance!]!
+  securityTokens: [UserSecurityTokenBalance!]!
 }
 
 type StableCoin @entity {
@@ -9,7 +9,7 @@ type StableCoin @entity {
    symbol: String!
    name: String!
    decimals: BigInt!
-   balances: [UserStablecoinBalance!]!
+   balances: [UserStableCoinBalance!]! @derivedFrom(field:"stableCoin")
  }
 
 type SecurityToken @entity {
@@ -17,21 +17,23 @@ type SecurityToken @entity {
    symbol: String!
    name: String!
    decimals: BigInt!
-   balances: [UserSTBalance!]!
+   balances: [UserSecurityTokenBalance!]! @derivedFrom(field:"securityToken")
  }
 
-type UserSTBalance @entity {
+type UserSecurityTokenBalance @entity {
     id: ID!
+    securityToken: SecurityToken!
     partitions: [PartitionBalance!]!
  }
 
 type PartitionBalance @entity {
     id: ID!
-    balance: BigInt!
+    amount: BigInt!
  }
 
-type UserStablecoinBalance @entity {
+type UserStableCoinBalance @entity {
     id: ID!
-    balance: BigInt!
+    amount: BigInt!
     hold: BigInt!
+    stableCoin: StableCoin!
  }

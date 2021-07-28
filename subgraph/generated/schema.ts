@@ -195,7 +195,7 @@ export class SecurityToken extends Entity {
   }
 }
 
-export class UserSTBalance extends Entity {
+export class UserSecurityTokenBalance extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -203,17 +203,23 @@ export class UserSTBalance extends Entity {
 
   save(): void {
     let id = this.get("id");
-    assert(id !== null, "Cannot save UserSTBalance entity without an ID");
+    assert(
+      id !== null,
+      "Cannot save UserSecurityTokenBalance entity without an ID"
+    );
     assert(
       id.kind == ValueKind.STRING,
-      "Cannot save UserSTBalance entity with non-string ID. " +
+      "Cannot save UserSecurityTokenBalance entity with non-string ID. " +
         'Considering using .toHex() to convert the "id" to a string.'
     );
-    store.set("UserSTBalance", id.toString(), this);
+    store.set("UserSecurityTokenBalance", id.toString(), this);
   }
 
-  static load(id: string): UserSTBalance | null {
-    return store.get("UserSTBalance", id) as UserSTBalance | null;
+  static load(id: string): UserSecurityTokenBalance | null {
+    return store.get(
+      "UserSecurityTokenBalance",
+      id
+    ) as UserSecurityTokenBalance | null;
   }
 
   get id(): string {
@@ -223,6 +229,15 @@ export class UserSTBalance extends Entity {
 
   set id(value: string) {
     this.set("id", Value.fromString(value));
+  }
+
+  get securityToken(): string {
+    let value = this.get("securityToken");
+    return value.toString();
+  }
+
+  set securityToken(value: string) {
+    this.set("securityToken", Value.fromString(value));
   }
 
   get partitions(): Array<string> {
@@ -265,17 +280,17 @@ export class PartitionBalance extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get balance(): BigInt {
-    let value = this.get("balance");
+  get amount(): BigInt {
+    let value = this.get("amount");
     return value.toBigInt();
   }
 
-  set balance(value: BigInt) {
-    this.set("balance", Value.fromBigInt(value));
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
   }
 }
 
-export class UserStablecoinBalance extends Entity {
+export class UserStableCoinBalance extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -285,21 +300,21 @@ export class UserStablecoinBalance extends Entity {
     let id = this.get("id");
     assert(
       id !== null,
-      "Cannot save UserStablecoinBalance entity without an ID"
+      "Cannot save UserStableCoinBalance entity without an ID"
     );
     assert(
       id.kind == ValueKind.STRING,
-      "Cannot save UserStablecoinBalance entity with non-string ID. " +
+      "Cannot save UserStableCoinBalance entity with non-string ID. " +
         'Considering using .toHex() to convert the "id" to a string.'
     );
-    store.set("UserStablecoinBalance", id.toString(), this);
+    store.set("UserStableCoinBalance", id.toString(), this);
   }
 
-  static load(id: string): UserStablecoinBalance | null {
+  static load(id: string): UserStableCoinBalance | null {
     return store.get(
-      "UserStablecoinBalance",
+      "UserStableCoinBalance",
       id
-    ) as UserStablecoinBalance | null;
+    ) as UserStableCoinBalance | null;
   }
 
   get id(): string {
@@ -311,13 +326,13 @@ export class UserStablecoinBalance extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get balance(): BigInt {
-    let value = this.get("balance");
+  get amount(): BigInt {
+    let value = this.get("amount");
     return value.toBigInt();
   }
 
-  set balance(value: BigInt) {
-    this.set("balance", Value.fromBigInt(value));
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
   }
 
   get hold(): BigInt {
@@ -327,5 +342,14 @@ export class UserStablecoinBalance extends Entity {
 
   set hold(value: BigInt) {
     this.set("hold", Value.fromBigInt(value));
+  }
+
+  get stableCoin(): string {
+    let value = this.get("stableCoin");
+    return value.toString();
+  }
+
+  set stableCoin(value: string) {
+    this.set("stableCoin", Value.fromString(value));
   }
 }
