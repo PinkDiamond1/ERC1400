@@ -12,6 +12,7 @@ export function handleTransfer(event: Transfer): void {
     const stableCoinBalanceTo = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.to.toHexString()));
     if(stableCoinBalanceTo !== null){
       stableCoinBalanceTo.amount = stableCoinBalanceTo.amount.plus(event.params.value);
+      stableCoinBalanceTo.save();
     }
   }
   // Burn
@@ -19,6 +20,7 @@ export function handleTransfer(event: Transfer): void {
     const stableCoinBalanceFrom = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.from.toHexString()));
     if(stableCoinBalanceFrom !== null){
       stableCoinBalanceFrom.amount = stableCoinBalanceFrom.amount.minus(event.params.value);
+      stableCoinBalanceFrom.save();
     }
   }
   // Or It is a normal transfer
@@ -26,11 +28,13 @@ export function handleTransfer(event: Transfer): void {
     const stableCoinBalanceFrom = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.from.toHexString()));
     if(stableCoinBalanceFrom !== null){
       stableCoinBalanceFrom.amount = stableCoinBalanceFrom.amount.minus(event.params.value);
+      stableCoinBalanceFrom.save();
     }
 
     const stableCoinBalanceTo = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.to.toHexString()));
     if(stableCoinBalanceTo !== null){
       stableCoinBalanceTo.amount = stableCoinBalanceTo.amount.plus(event.params.value);
+      stableCoinBalanceTo.save();
     }
   }
 
