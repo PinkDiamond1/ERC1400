@@ -69,6 +69,6 @@ templates:
          - name: ERC1400
            file: ./abis/ERC1400.json
        eventHandlers:
-         - event: Transfer(indexed address,indexed address,uint256)
-           handler: handleTransfer
+         - event: TransferByPartition(indexed bytes32,address,indexed address,indexed address,uint256,bytes,bytes)
+           handler: handleTransferByPartition
 

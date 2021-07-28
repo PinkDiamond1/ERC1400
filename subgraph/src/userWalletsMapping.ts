@@ -60,7 +60,7 @@ export function handleAddUserWallet(event: AddUserWallet): void {
       // console.log(stContract.try_name());
       securityTokenEntity.save();
     }
-    const userSecurityTokenBalance = new UserSecurityTokenBalance(event.params.user.toHexString());
+    const userSecurityTokenBalance = new UserSecurityTokenBalance(st[i].toHexString().concat("-").concat(event.params.user.toHexString()));
     userSecurityTokenBalance.partitions = new Array<string>();
     userSecurityTokenBalance.securityToken = securityTokenEntity.id;
     userSecurityTokenBalance.save();
@@ -96,7 +96,7 @@ export function handleAddUserWallet(event: AddUserWallet): void {
       stableCoinEntity.save();
     }
 
-    const userStableCoinBalance = new UserStableCoinBalance(event.params.user.toHexString());
+    const userStableCoinBalance = new UserStableCoinBalance(sc[i].toHexString().concat("-").concat(event.params.user.toHexString()));
     userStableCoinBalance.amount = ZERO;
     userStableCoinBalance.hold = ZERO;
     userStableCoinBalance.stableCoin = stableCoinEntity.id;
@@ -150,7 +150,7 @@ export function handleAddUserTokens(event: AddUserTokens): void {
 
       securityTokenEntity.save();
     }
-    const userSecurityTokenBalance = new UserSecurityTokenBalance(event.params.user.toHexString());
+    const userSecurityTokenBalance = new UserSecurityTokenBalance(st[i].toHexString().concat("-").concat(event.params.user.toHexString()));
     userSecurityTokenBalance.partitions = new Array<string>();
     userSecurityTokenBalance.securityToken = securityTokenEntity.id;
     userSecurityTokenBalance.save();
@@ -183,7 +183,7 @@ export function handleAddUserTokens(event: AddUserTokens): void {
     stableCoinEntity.save();
     }
 
-    const userStableCoinBalance = new UserStableCoinBalance(event.params.user.toHexString());
+    const userStableCoinBalance = new UserStableCoinBalance(sc[i].toHexString().concat("-").concat(event.params.user.toHexString()));
     userStableCoinBalance.amount = ZERO;
     userStableCoinBalance.hold = ZERO;
     userStableCoinBalance.stableCoin = stableCoinEntity.id;
@@ -197,6 +197,8 @@ export function handleAddUserTokens(event: AddUserTokens): void {
   userWallet.save()
 }
 
+
+// TODO fix this based on test case
 export function handleRemoveUserTokens(event: RemoveUserTokens): void {
   if("0x9934567890123456789012345678901234567890" === event.params.user.toHexString()) {
     return;
