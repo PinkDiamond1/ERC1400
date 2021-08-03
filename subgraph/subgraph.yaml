@@ -8,7 +8,7 @@ dataSources:
     name: UserWallets
     network: besu
     source:
-      address: '0xf6319101B793d5491e8aAba0C14f0C9d3D78Fc86'
+      address: '0xEd5135256F1D024b04510D0a8517412d57C30FD5'
       startBlock: 1
       abi: UserWallets
     mapping:
