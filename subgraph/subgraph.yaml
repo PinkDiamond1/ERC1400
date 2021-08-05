@@ -71,4 +71,5 @@ templates:
        eventHandlers:
          - event: TransferByPartition(indexed bytes32,address,indexed address,indexed address,uint256,bytes,bytes)
            handler: handleTransferByPartition
-
+         - event: IssuedByPartition(indexed bytes32,indexed address,indexed address,uint256,bytes,bytes)
+           handler: handleIssuedByPartition
