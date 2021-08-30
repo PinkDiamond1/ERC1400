@@ -59,6 +59,15 @@ export class UserWallet extends Entity {
   set securityTokens(value: Array<string>) {
     this.set("securityTokens", Value.fromStringArray(value));
   }
+
+  get stTransactionHistories(): Array<string> {
+    let value = this.get("stTransactionHistories");
+    return value.toStringArray();
+  }
+
+  set stTransactionHistories(value: Array<string>) {
+    this.set("stTransactionHistories", Value.fromStringArray(value));
+  }
 }
 
 export class StableCoin extends Entity {
@@ -351,5 +360,111 @@ export class UserStableCoinBalance extends Entity {
 
   set stableCoin(value: string) {
     this.set("stableCoin", Value.fromString(value));
+  }
+}
+
+export class STTransactionHistory extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(
+      id !== null,
+      "Cannot save STTransactionHistory entity without an ID"
+    );
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save STTransactionHistory entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("STTransactionHistory", id.toString(), this);
+  }
+
+  static load(id: string): STTransactionHistory | null {
+    return store.get("STTransactionHistory", id) as STTransactionHistory | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get to(): string {
+    let value = this.get("to");
+    return value.toString();
+  }
+
+  set to(value: string) {
+    this.set("to", Value.fromString(value));
+  }
+
+  get from(): string {
+    let value = this.get("from");
+    return value.toString();
+  }
+
+  set from(value: string) {
+    this.set("from", Value.fromString(value));
+  }
+
+  get amount(): BigInt {
+    let value = this.get("amount");
+    return value.toBigInt();
+  }
+
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
+  }
+
+  get transactionReferenceType(): string {
+    let value = this.get("transactionReferenceType");
+    return value.toString();
+  }
+
+  set transactionReferenceType(value: string) {
+    this.set("transactionReferenceType", Value.fromString(value));
+  }
+
+  get balance(): BigInt {
+    let value = this.get("balance");
+    return value.toBigInt();
+  }
+
+  set balance(value: BigInt) {
+    this.set("balance", Value.fromBigInt(value));
+  }
+
+  get timestamp(): BigInt {
+    let value = this.get("timestamp");
+    return value.toBigInt();
+  }
+
+  set timestamp(value: BigInt) {
+    this.set("timestamp", Value.fromBigInt(value));
+  }
+
+  get partition(): string {
+    let value = this.get("partition");
+    return value.toString();
+  }
+
+  set partition(value: string) {
+    this.set("partition", Value.fromString(value));
+  }
+
+  get securityToken(): string {
+    let value = this.get("securityToken");
+    return value.toString();
+  }
+
+  set securityToken(value: string) {
+    this.set("securityToken", Value.fromString(value));
   }
 }

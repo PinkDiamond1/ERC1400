@@ -106,6 +106,7 @@ export function handleAddUserWallet(event: AddUserWallet): void {
 
   userWallet.stableCoins = stableCoinArray;
   userWallet.securityTokens = securityTokenArray;
+  userWallet.stTransactionHistories = new Array<string>();
   userWallet.save()
 }
 
