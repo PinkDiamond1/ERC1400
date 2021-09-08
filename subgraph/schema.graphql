@@ -3,6 +3,7 @@ type UserWallet @entity {
   stableCoins: [UserStableCoinBalance!]!
   securityTokens: [UserSecurityTokenBalance!]!
   stTransactionHistories: [STTransactionHistory!]!
+  scTransactionHistories: [SCTransactionHistory!]!
 }
 
 type StableCoin @entity {
@@ -49,4 +50,15 @@ type UserStableCoinBalance @entity {
     timestamp: BigInt!
     partition: String!
     securityToken: SecurityToken!
+ }
+
+ type SCTransactionHistory @entity {
+    id: ID!
+    to: String!
+    from: String!
+    amount: BigInt!
+    transactionReferenceType: String!
+    balance: BigInt!
+    timestamp: BigInt!
+    stableCoin: StableCoin!
  }
