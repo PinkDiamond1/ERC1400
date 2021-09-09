@@ -11,12 +11,15 @@ import {
 } from "../generated/templates/ERC20HoldableToken/ERC20HoldableToken";
 
 import {ERC20HoldableToken} from "../generated/templates";
+import {log} from "@graphprotocol/graph-ts/index";
 
 export function handleTransfer(event: Transfer): void {
   let fromWallet = UserWallet.load(event.params.from.toHexString());
   let toWallet = UserWallet.load(event.params.to.toHexString());
   // Mint
-  if(event.params.from.toHexString() === '0x0000000000000000000000000000000000000000') {
+  if(event.params.from.toHexString() == '0x0000000000000000000000000000000000000000') {
+
+    log.info('entering mint now', []);
     const stableCoinBalanceTo = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.to.toHexString()));
     if(stableCoinBalanceTo !== null){
       stableCoinBalanceTo.amount = stableCoinBalanceTo.amount.plus(event.params.value);
@@ -32,13 +35,15 @@ export function handleTransfer(event: Transfer): void {
       txHistory.stableCoin = stableCoinBalanceTo.stableCoin;
       txHistory.save();
 
-      fromWallet.scTransactionHistories = fromWallet.scTransactionHistories.concat([txHistory.id]);
-      fromWallet.save();
+      toWallet.scTransactionHistories = toWallet.scTransactionHistories.concat([txHistory.id]);
+      toWallet.save();
 
     }
   }
   // Burn
-  else if(event.params.to.toHexString() === '0x0000000000000000000000000000000000000000') {
+  else if(event.params.to.toHexString() == '0x0000000000000000000000000000000000000000') {
+
+    log.info('entering burn now', []);
     const stableCoinBalanceFrom = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(event.params.from.toHexString()));
     if(stableCoinBalanceFrom !== null){
       stableCoinBalanceFrom.amount = stableCoinBalanceFrom.amount.minus(event.params.value);

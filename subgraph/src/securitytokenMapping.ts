@@ -21,7 +21,9 @@ export function handleTransferByPartition(event: TransferByPartition): void {
   let toWallet = UserWallet.load(event.params.to.toHexString());
 
   // Mint
-  if(event.params.from.toHexString() === '0x0000000000000000000000000000000000000000') {
+  if(event.params.from.toHexString() == '0x0000000000000000000000000000000000000000') {
+    log.info('entering mint now', []);
+
     const securityTokenBalanceTo = UserSecurityTokenBalance.load(event.address.toHexString().concat("-").concat(event.params.to.toHexString()));
     if(securityTokenBalanceTo !== null){
         if (securityTokenBalanceTo.partitions.includes(partitionIdentifierTo)) {
@@ -58,7 +60,9 @@ export function handleTransferByPartition(event: TransferByPartition): void {
 
   }
   // Burn
-  else if(event.params.to.toHexString() === '0x0000000000000000000000000000000000000000') {
+  else if(event.params.to.toHexString() == '0x0000000000000000000000000000000000000000') {
+
+    log.info('entering burn now', []);
     const securityTokenBalanceFrom = UserSecurityTokenBalance.load(event.address.toHexString().concat("-").concat(event.params.to.toHexString()));
     if(securityTokenBalanceFrom !== null){
         if (securityTokenBalanceFrom.partitions.includes(partitionIdentifierFrom)) {
