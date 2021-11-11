@@ -33,10 +33,23 @@ type PartitionBalance @entity {
     amount: BigInt!
  }
 
+type Hold @entity {
+    id: ID!
+    amount: BigInt!
+    account: String!
+    recipient: String!
+    notary: String!
+    expirationDateTime: BigInt!
+    lockHash: String!
+    userStablecoinBalance: UserStableCoinBalance!
+    released: Boolean!
+ }
+
 type UserStableCoinBalance @entity {
     id: ID!
     amount: BigInt!
     hold: BigInt!
+    holds: [Hold!]! @derivedFrom(field:"userStablecoinBalance")
     stableCoin: StableCoin!
  }
 

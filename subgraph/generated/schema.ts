@@ -308,6 +308,109 @@ export class PartitionBalance extends Entity {
   }
 }
 
+export class Hold extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id !== null, "Cannot save Hold entity without an ID");
+    assert(
+      id.kind == ValueKind.STRING,
+      "Cannot save Hold entity with non-string ID. " +
+        'Considering using .toHex() to convert the "id" to a string.'
+    );
+    store.set("Hold", id.toString(), this);
+  }
+
+  static load(id: string): Hold | null {
+    return store.get("Hold", id) as Hold | null;
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    return value.toString();
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get amount(): BigInt {
+    let value = this.get("amount");
+    return value.toBigInt();
+  }
+
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
+  }
+
+  get account(): string {
+    let value = this.get("account");
+    return value.toString();
+  }
+
+  set account(value: string) {
+    this.set("account", Value.fromString(value));
+  }
+
+  get recipient(): string {
+    let value = this.get("recipient");
+    return value.toString();
+  }
+
+  set recipient(value: string) {
+    this.set("recipient", Value.fromString(value));
+  }
+
+  get notary(): string {
+    let value = this.get("notary");
+    return value.toString();
+  }
+
+  set notary(value: string) {
+    this.set("notary", Value.fromString(value));
+  }
+
+  get expirationDateTime(): BigInt {
+    let value = this.get("expirationDateTime");
+    return value.toBigInt();
+  }
+
+  set expirationDateTime(value: BigInt) {
+    this.set("expirationDateTime", Value.fromBigInt(value));
+  }
+
+  get lockHash(): string {
+    let value = this.get("lockHash");
+    return value.toString();
+  }
+
+  set lockHash(value: string) {
+    this.set("lockHash", Value.fromString(value));
+  }
+
+  get userStablecoinBalance(): string {
+    let value = this.get("userStablecoinBalance");
+    return value.toString();
+  }
+
+  set userStablecoinBalance(value: string) {
+    this.set("userStablecoinBalance", Value.fromString(value));
+  }
+
+  get released(): boolean {
+    let value = this.get("released");
+    return value.toBoolean();
+  }
+
+  set released(value: boolean) {
+    this.set("released", Value.fromBoolean(value));
+  }
+}
+
 export class UserStableCoinBalance extends Entity {
   constructor(id: string) {
     super();
@@ -360,6 +463,15 @@ export class UserStableCoinBalance extends Entity {
 
   set hold(value: BigInt) {
     this.set("hold", Value.fromBigInt(value));
+  }
+
+  get holds(): Array<string> {
+    let value = this.get("holds");
+    return value.toStringArray();
+  }
+
+  set holds(value: Array<string>) {
+    this.set("holds", Value.fromStringArray(value));
   }
 
   get stableCoin(): string {

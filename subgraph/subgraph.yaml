@@ -53,6 +53,15 @@ templates:
        eventHandlers:
          - event: Transfer(indexed address,indexed address,uint256)
            handler: handleTransfer
+         - event: IncrementHold(indexed bytes32,uint256)
+           handler: handleIncrementHold
+         - event: DecrementHold(indexed bytes32,uint256)
+           handler: handleDecrementHold
+         - event: NewHold(indexed bytes32,indexed address,indexed address,uint256,uint256,bytes32)
+           handler: handleNewHold
+         - event: ReleaseHold(indexed bytes32,address)
+           handler: handleReleaseHold
+
    - name: ERC1400
      kind: ethereum/contract
      network: besu
