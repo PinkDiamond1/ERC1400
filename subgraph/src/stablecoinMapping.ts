@@ -141,22 +141,27 @@ export function handleNewHold(event: NewHold): void {
 }
 
 export function handleReleaseHold(event: ReleaseHold): void {
-   let user = event.transaction.from;
   const hold = Hold.load(event.params.holdId.toHexString());
   if(!hold){
      log.info('hold is null {}', [event.params.holdId.toHexString()]);
      return;
   }
 
-  hold.released = true;
-  hold.save();
+  const user = hold.account;
 
-  const stableCoinBalance = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(user.toHexString()));
+  const stableCoinBalance = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(user));
+  if(!stableCoinBalance){
+     log.info('stablecoin balance is null {}', [event.params.holdId.toHexString()]);
+     return;
+  }
   if(stableCoinBalance.hold >= hold.amount) {
     stableCoinBalance.hold = stableCoinBalance.hold.minus(hold.amount);
   } else {
     log.info('Inappropriate release', []);
   }
+
+  hold.released = true;
+  hold.save();
   stableCoinBalance.save();
 }
 
