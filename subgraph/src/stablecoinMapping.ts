@@ -114,7 +114,15 @@ export function handleTransfer(event: Transfer): void {
 
 export function handleNewHold(event: NewHold): void {
   let user = event.transaction.from;
+
+  log.info('Entering new hold {}', [event.address.toHexString().concat("-").concat(user.toHexString())]);
+
   const stableCoinBalance = UserStableCoinBalance.load(event.address.toHexString().concat("-").concat(user.toHexString()));
+
+  if(!stableCoinBalance){
+     log.info('stablecoin balance is null {}', [event.address.toHexString().concat("-").concat(user.toHexString())]);
+     return;
+  }
 
   const newHold = new Hold(event.params.holdId.toHexString());
 
@@ -133,8 +141,13 @@ export function handleNewHold(event: NewHold): void {
 }
 
 export function handleReleaseHold(event: ReleaseHold): void {
-  let user = event.transaction.from;
+   let user = event.transaction.from;
   const hold = Hold.load(event.params.holdId.toHexString());
+  if(!hold){
+     log.info('hold is null {}', [event.params.holdId.toHexString()]);
+     return;
+  }
+
   hold.released = true;
   hold.save();
 
@@ -158,6 +171,8 @@ export function handleIncrementHold(event: IncrementHold): void {
   stableCoinBalance.hold = stableCoinBalance.hold.plus(event.params.amount);
 
   stableCoinBalance.save();
+
+  log.info('called increment {}', [user.toHexString()]);
 }
 
 export function handleDecrementHold(event: DecrementHold): void {
@@ -177,4 +192,6 @@ export function handleDecrementHold(event: DecrementHold): void {
     log.info('Inappropriate decrement stablecoin balance hold', []);
   }
   stableCoinBalance.save();
+
+  log.info('called decrement {}', [user.toHexString()]);
 }
